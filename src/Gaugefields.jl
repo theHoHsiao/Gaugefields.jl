@@ -205,7 +205,9 @@ import .AbstractGaugefields_module:
     getvalue,
     get_nprocs,
     write_to_numpyarray,
-    map_U_sequential!
+    map_U_sequential!,
+    normalize_U!
+
 import Wilsonloop: make_loops_fromname
 import .GaugeAction_module:
     GaugeAction,
@@ -216,7 +218,8 @@ import .GaugeAction_module:
     get_temporary_gaugefields,
     evaluate_GaugeAction
 
-import .Temporalfields_module: Temporalfields, unused!
+import .Temporalfields_module: Temporalfields, unused!, get_temp
+
 export Temporalfields, unused!
 
 export IdentityGauges,
@@ -257,6 +260,7 @@ export AbstractGaugefields, Traceless_antihermitian
 export write_to_numpyarray, map_U_sequential!
 export load_binarydata!
 export loadU, saveU
+export construct_Λmatrix_forSTOUT!
 
 
 import .Bfield_module: Initialize_Bfields,

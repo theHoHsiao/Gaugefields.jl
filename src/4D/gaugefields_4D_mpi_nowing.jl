@@ -2473,16 +2473,16 @@ function exptU!(
     w = temps[2]
 
 
-    NT = v.NT
-    NZ = v.NZ
-    NY = v.NY
-    NX = v.NX
+    NT = uin.NT
+    NZ = uin.NZ
+    NY = uin.NY
+    NX = uin.NX
     #t = 1
 
-    @inbounds for it = 1:v.PN[4]
-        for iz = 1:v.PN[3]
-            for iy = 1:v.PN[2]
-                for ix = 1:v.PN[1]
+    @inbounds for it = 1:uin.PN[4]
+        for iz = 1:uin.PN[3]
+            for iy = 1:uin.PN[2]
+                for ix = 1:uin.PN[1]
                     v11 = getvalue(uin, 1, 1, ix, iy, iz, it)
                     v22 = getvalue(uin, 2, 2, ix, iy, iz, it)
                     v33 = getvalue(uin, 3, 3, ix, iy, iz, it)
@@ -4237,9 +4237,9 @@ M = (U*δ_prev) star (dexp(Q)/dQ)
 """
 function construct_Λmatrix_forSTOUT!(
     Λ,
-    δ_current::Gaugefields_4D_wing_mpi{NC},
+    δ_current::Gaugefields_4D_nowing_mpi{NC},
     Q,
-    u::Gaugefields_4D_wing_mpi{NC},
+    u::Gaugefields_4D_nowing_mpi{NC},
 ) where {NC}
     ### HH: get the position under MPI
     NT = u.PN[4]
@@ -4286,7 +4286,7 @@ function construct_Λmatrix_forSTOUT!(
 end
 
 
-function unit_U!(Uμ::Gaugefields_4D_wing_mpi{NC}) where {NC}
+function unit_U!(Uμ::Gaugefields_4D_nowing_mpi{NC}) where {NC}
     NT = Uμ.PN[4]
     NZ = Uμ.PN[3]
     NY = Uμ.PN[2]
