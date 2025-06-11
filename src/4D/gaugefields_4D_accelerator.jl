@@ -96,7 +96,8 @@ struct Gaugefields_4D_accelerator{NC,TU,TUv,accdevise,TshifedU} <: Gaugefields_4
             #error(iscudadefined)
             if iscudadefined
                 if CUDA.has_cuda()
-                    U = CUDA.CuArray(Ucpu)
+                    #U = CUDA.CuArray(Ucpu)
+                    U = CUDA.cu(Ucpu, unified=true)
                     temp_volume = CUDA.CuArray(temp_volume_cpu)
                     accdevise = :cuda
                 else
