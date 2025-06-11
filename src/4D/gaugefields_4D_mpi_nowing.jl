@@ -1449,12 +1449,12 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
         #MPI.Put(value.positions[1:count], myrank_send, disp, win_i)
         #MPI.Put(value.data[:, :, 1:count], myrank_send, disp * NC * NC, win)
 
-        GC.@preserve value begin
+        #GC.@preserve value begin
             buf_pos = view(value.positions, 1:count)
             buf_data = view(value.data, :, :, 1:count)
             MPI.Put(buf_pos, myrank_send, disp, win_i)
             MPI.Put(buf_data, myrank_send, disp * NC * NC, win)
-        end
+        #end
     end
 
 
@@ -1486,7 +1486,7 @@ end
 function mpi_updates_U!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
     if length(send_ranks) != 0
 
-        val = MPI.Allreduce(length(send_ranks), +, U.comm) ÷ get_nprocs(U)
+        val = MPI.Allreduce(Int16(length(send_ranks)), +, U.comm) ÷ get_nprocs(U)
 
         #=
         for rank=0:get_nprocs(U)
@@ -3060,7 +3060,7 @@ function LinearAlgebra.tr(
     NT = a.NT
     PN = a.PN
 
-    s = 0
+    s::ComplexF64 = 0
     for it = 1:PN[4]
         for iz = 1:PN[3]
             for iy = 1:PN[2]
@@ -3091,7 +3091,7 @@ function LinearAlgebra.tr(a::Gaugefields_4D_nowing_mpi{NC}) where {NC}
     NT = a.NT
     PN = a.PN
 
-    s = 0
+    s::ComplexF64 = 0
     for it = 1:PN[4]
         for iz = 1:PN[3]
             for iy = 1:PN[2]
