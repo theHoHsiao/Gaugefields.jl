@@ -575,9 +575,14 @@ function load_gaugefield!(U, i, ildg::ILDG, L, NC; NDW=0)
 
     temp_name = "$(filename).dat"
 
-    lime_extract_record() do exe
-        run(`$exe $filename $message_no $reccord_no $temp_name`)
+    if !isfile(temp_name)
+        lime_extract_record() do exe
+            run(`$exe $filename $message_no $reccord_no $temp_name`)
+        end
     end
+    #lime_extract_record() do exe
+    #    run(`$exe $filename $message_no $reccord_no $temp_name`)
+    #end
 
     load_binarydata!(U, NX, NY, NZ, NT, NC, temp_name, precision)
 
