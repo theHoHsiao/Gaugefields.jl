@@ -511,6 +511,7 @@ function read!(x::Binarydata_ILDG)
     return rvalue + im * ivalue
 end
 
+#=
 function load_binarydata!(U, NX, NY, NZ, NT, NC, filename, precision)
     bi = Binarydata_ILDG(filename, precision)
 
@@ -537,6 +538,35 @@ function load_binarydata!(U, NX, NY, NZ, NT, NC, filename, precision)
 
     #close(fp)
 end
+=#
+
+# #=
+function load_binarydata!(U, NX, NY, NZ, NT, NC, filename, precision)
+    # Open binary file and read all data in one go
+    if precision == 32
+        floattype = Float32
+    else
+        floattype = Float64
+    end
+    n_elements = NX * NY * NZ * NT * NC * NC * 2 * 4  # complex numbers = 2*T each × 4 directions
+    raw_data = Vector{floattype}(undef, n_elements)
+
+    open(filename, "r") do fp
+        Base.read!(fp, raw_data)
+    end
+
+    raw_data = ntoh.(raw_data)
+    complex_data = reinterpret(Complex{floattype}, raw_data)
+    
+    idx = 1
+    for it = 1:NT, iz = 1:NZ, iy = 1:NY, ix = 1:NX, μ = 1:4, ic2 = 1:NC, ic1 = 1:NC
+        U[μ][ic2, ic1, ix, iy, iz, it] = complex_data[idx]
+        idx += 1
+    end
+
+    update!(U)
+end
+# =#
 
 function load_binarydata!(U, filename)
     NX = U[1].NX
