@@ -366,11 +366,10 @@ function __init__()
                 println(fp, "$tempfile1 ", "ildg-binary-data")
                 close(fp)
 
-                #lime_pack() do exe
-                #    run(`$exe $tempfile2 $filename`)
-                #    #run(`$exe filelist.dat $filename`)
-                #end
-                run(`lime_pack $tempfile2 $filename`)
+                lime_pack() do exe
+                    run(`$exe $tempfile2 $filename`)
+                    #run(`$exe filelist.dat $filename`)
+                end
 
             end
             barrier(U[1])
@@ -469,11 +468,10 @@ function save_binarydata(U, filename; tempfile1="testbin.dat", tempfile2="fileli
     println(fp, "$tempfile1 ", "ildg-binary-data")
     close(fp)
 
-    #lime_pack() do exe
-    #    #run(`$exe filelist.dat $filename`)
-    #    run(`$exe $tempfile2 $filename`)
-    #end
-    run(`lime_pack $tempfile2 $filename`)
+    lime_pack() do exe
+        #run(`$exe filelist.dat $filename`)
+        run(`$exe $tempfile2 $filename`)
+    end
 
     return
 
