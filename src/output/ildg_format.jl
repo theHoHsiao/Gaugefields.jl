@@ -160,7 +160,81 @@ function __init__()
             #close(fp)
         end
 
+
+        #HH: improving the config. reading speed -- version 1.
         function load_binarydata!(
+            U::Vector{T},
+            NX, NY, NZ, NT,
+            NC,
+            filename,
+            precision,
+        ) where {T<:Gaugefields_4D_nowing_mpi}
+
+            myrank = U[1].myrank
+            comm = MPI.COMM_WORLD
+            PN = U[1].PN            
+            nprocs = U[1].nprocs
+
+            Nfields = NC * NC * 4
+            total_sites = NX * NY * NZ * NT
+
+            # Preallocate recv buffer for each rank
+            local_volume = prod(PN)
+            local_data = Vector{ComplexF64}(undef, Nfields * local_volume)
+
+            if myrank == 0
+                #println("Rank 0 reading binary data site by site...")
+
+                bi = Binarydata_ILDG(filename, precision)
+
+                # Buffers to collect per-rank data
+                rank_buffers = [Vector{ComplexF64}() for _ in 1:nprocs]
+
+                for it = 1:NT, iz = 1:NZ, iy = 1:NY, ix = 1:NX
+                    rank, _, _, _, _ = calc_rank_and_indices(U[1], ix, iy, iz, it)
+                    for μ = 1:4
+                        for ic2 = 1:NC
+                            for ic1 = 1:NC
+                                val = read!(bi)  # your custom read!
+                                push!(rank_buffers[rank + 1], val)
+                            end
+                        end
+                    end
+                end
+
+                # Send each buffer to its rank
+                for r = 0:nprocs-1
+                    if r == 0
+                        local_data .= rank_buffers[1]
+                    else
+                        MPI.Send(rank_buffers[r + 1], r, 0, comm)
+                    end
+                end
+            else
+                # Receive full buffer for this rank
+                MPI.Recv!(local_data, 0, 0, comm)
+            end
+
+            # All ranks: unpack local_data into U
+            count = 0
+            for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
+                for μ = 1:4
+                    for ic2 = 1:NC
+                        for ic1 = 1:NC
+                            count += 1
+                            val = local_data[count]
+                            setvalue!(U[μ], val, ic2, ic1, ix, iy, iz, it)
+                        end
+                    end
+                end
+            end
+
+            MPI.Barrier(comm)
+            update!(U)
+        end
+
+
+        function load_binarydata_og!(
             U::Array{T,1},
             NX,
             NY,
@@ -174,15 +248,15 @@ function __init__()
                 bi = Binarydata_ILDG(filename, precision)
             end
 
-            data = zeros(ComplexF64, NC, NC, 4, prod(U[1].PN), U[1].nprocs)
-            counts = zeros(Int64, U[1].nprocs)
-            totalnum = NX * NY * NZ * NT * NC * NC * 2 * 4
-            PN = U[1].PN
+            #data = zeros(ComplexF64, NC, NC, 4, prod(U[1].PN), U[1].nprocs)
+            #counts = zeros(Int64, U[1].nprocs)
+            #totalnum = NX * NY * NZ * NT * NC * NC * 2 * 4
+            #PN = U[1].PN
             barrier(U[1])
 
             N = NC * NC * 4
-            send_mesg1 = Array{ComplexF64}(undef, 1)
-            recv_mesg1 = Array{ComplexF64}(undef, 1)
+            #send_mesg1 = Array{ComplexF64}(undef, 1)
+            #recv_mesg1 = Array{ComplexF64}(undef, 1)
 
             send_mesg = Array{ComplexF64}(undef, N)
             recv_mesg = Array{ComplexF64}(undef, N)
@@ -473,7 +547,6 @@ function save_binarydata(U, filename; tempfile1="testbin.dat", tempfile2="fileli
         run(`$exe $tempfile2 $filename`)
     end
 
-
     return
 
 end
@@ -511,6 +584,7 @@ function read!(x::Binarydata_ILDG)
     return rvalue + im * ivalue
 end
 
+#=
 function load_binarydata!(U, NX, NY, NZ, NT, NC, filename, precision)
     bi = Binarydata_ILDG(filename, precision)
 
@@ -537,6 +611,35 @@ function load_binarydata!(U, NX, NY, NZ, NT, NC, filename, precision)
 
     #close(fp)
 end
+=#
+
+# #=
+function load_binarydata!(U, NX, NY, NZ, NT, NC, filename, precision)
+    # Open binary file and read all data in one go
+    if precision == 32
+        floattype = Float32
+    else
+        floattype = Float64
+    end
+    n_elements = NX * NY * NZ * NT * NC * NC * 2 * 4  # complex numbers = 2*T each × 4 directions
+    raw_data = Vector{floattype}(undef, n_elements)
+
+    open(filename, "r") do fp
+        Base.read!(fp, raw_data)
+    end
+
+    raw_data = ntoh.(raw_data)
+    complex_data = reinterpret(Complex{floattype}, raw_data)
+    
+    idx = 1
+    for it = 1:NT, iz = 1:NZ, iy = 1:NY, ix = 1:NX, μ = 1:4, ic2 = 1:NC, ic1 = 1:NC
+        U[μ][ic2, ic1, ix, iy, iz, it] = complex_data[idx]
+        idx += 1
+    end
+
+    update!(U)
+end
+# =#
 
 function load_binarydata!(U, filename)
     NX = U[1].NX
@@ -573,12 +676,18 @@ function load_gaugefield!(U, i, ildg::ILDG, L, NC; NDW=0)
         precision = 64
     end
 
+    temp_name = "$(filename).dat"
 
-    lime_extract_record() do exe
-        run(`$exe $filename $message_no $reccord_no tempconf.dat`)
+    if !isfile(temp_name)
+        lime_extract_record() do exe
+            run(`$exe $filename $message_no $reccord_no $temp_name`)
+        end
     end
+    #lime_extract_record() do exe
+    #    run(`$exe $filename $message_no $reccord_no $temp_name`)
+    #end
 
-    load_binarydata!(U, NX, NY, NZ, NT, NC, "tempconf.dat", precision)
+    load_binarydata!(U, NX, NY, NZ, NT, NC, temp_name, precision)
 
     return
 end
