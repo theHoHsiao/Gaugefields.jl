@@ -162,7 +162,7 @@ function __init__()
 
 
         #HH: improving the config. reading speed -- version 1.
-        function load_binarydata_s2r!(
+        function load_binarydata!(
             U::Vector{T},
             NX, NY, NZ, NT,
             NC,
@@ -233,7 +233,7 @@ function __init__()
             update!(U)
         end
 
-        function load_binarydata!(
+        function load_binarydata_at_rank!( #still working in progress
             U::Vector{T},
             NX, NY, NZ, NT,
             NC,
