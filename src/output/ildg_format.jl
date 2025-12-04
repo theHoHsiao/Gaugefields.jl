@@ -162,7 +162,7 @@ function __init__()
 
 
         #HH: improving the config. reading speed -- version 1.
-        function load_binarydata!(
+        function load_binarydata_s2r!(
             U::Vector{T},
             NX, NY, NZ, NT,
             NC,
@@ -233,6 +233,57 @@ function __init__()
             update!(U)
         end
 
+        function load_binarydata!(
+            U::Vector{T},
+            NX, NY, NZ, NT,
+            NC,
+            filename,
+            precision,
+        ) where {T<:Gaugefields_4D_nowing_mpi}
+
+            myrank = U[1].myrank
+            comm = MPI.COMM_WORLD
+            PN = U[1].PN            
+            nprocs = U[1].nprocs
+
+            Nfields = NC * NC * 4
+            total_sites = NX * NY * NZ * NT
+
+            # Preallocate recv buffer for each rank
+            local_volume = prod(PN)
+            local_data = Vector{ComplexF64}(undef, Nfields * local_volume)
+
+            bi = Binarydata_ILDG(filename, precision)
+            #bi.count += 
+
+            #offset reading for each rank
+            #dump = 0
+            #for _ in 1:(myrank* Nfields * local_volume)
+            #    dump = read!(bi)
+            #end
+            bytes_per_complex = 2 * sizeof(bi.floattype)
+            bytes_per_site = Nfields * bytes_per_complex
+            offset = myrank * local_volume * bytes_per_site
+            seek(bi.fp, offset)
+
+            println("Rank $myrank: Starting to read binary data from file $(bi.count)")
+            # All ranks: unpack local_data into U
+            for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
+                for μ = 1:4
+                    for ic2 = 1:NC
+                        for ic1 = 1:NC
+                            
+                            val = read!(bi)
+                            setvalue!(U[μ], val, ic2, ic1, ix, iy, iz, it)
+                        end
+                    end
+                end
+            end
+            update!(U)
+            MPI.Barrier(comm)
+
+            
+        end
 
         function load_binarydata_og!(
             U::Array{T,1},
