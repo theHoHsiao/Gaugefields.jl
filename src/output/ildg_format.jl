@@ -162,7 +162,7 @@ function __init__()
 
 
         #HH: improving the config. reading speed -- version 1.
-        function load_binarydata!(
+        function load_binarydata_v1!(
             U::Vector{T},
             NX, NY, NZ, NT,
             NC,
@@ -233,7 +233,7 @@ function __init__()
             update!(U)
         end
 
-        function load_binarydata_at_rank!( #still working in progress
+        function load_binarydata!( # HH: improving the config. reading speed -- version 2. -> at rank level
             U::Vector{T},
             NX, NY, NZ, NT,
             NC,
@@ -246,16 +246,31 @@ function __init__()
             PN = U[1].PN            
 
             Nfields = NC * NC * 4
-            local_volume = prod(PN)
-
             bi = Binarydata_ILDG(filename, precision)
             
             bytes_per_site = 2 * sizeof(bi.floattype) * Nfields
-            offset = myrank * local_volume * bytes_per_site
-            seek(bi.fp, offset)
-
-            # All ranks: unpack local_data into U
+           
+            
+            px, py, pz, pt = U[1].myrank_xyzt
+            # Assign data to local U
             for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
+                
+                # convert local coords to global coords
+                ixg = px * PN[1] + ix
+                iyg = py * PN[2] + iy
+                izg = pz * PN[3] + iz
+                itg = pt * PN[4] + it
+
+                # global linear index
+                global_index =
+                    (itg - 1) * (NZ * NY * NX) +
+                    (izg - 1) * (NY * NX) +
+                    (iyg - 1) * NX +
+                    (ixg - 1)
+
+                skip = global_index * bytes_per_site
+
+                seek(bi.fp, skip)
                 for μ = 1:4
                     for ic2 = 1:NC
                         for ic1 = 1:NC
@@ -268,8 +283,6 @@ function __init__()
             end
             update!(U)
             MPI.Barrier(comm)
-
-            
         end
 
         function load_binarydata_og!(
