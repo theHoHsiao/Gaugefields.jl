@@ -423,7 +423,7 @@ function Initialize_Gaugefields(
                 NN...;
                 mpi,
                 PEs,
-                mpiinit=false,
+                mpiinit=true,
                 verbose_level,
                 cuda,
                 blocks,
@@ -439,7 +439,7 @@ function Initialize_Gaugefields(
                 NN...;
                 mpi,
                 PEs,
-                mpiinit=false,
+                mpiinit=true,
                 verbose_level,
                 randomnumber,
                 cuda,
