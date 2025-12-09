@@ -26,22 +26,23 @@ include("./smearing/gradientflow.jl")
 
 
 
-#function __init__()
-#    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" begin
-import .AbstractGaugefields_module:
-    identityGaugefields_4D_wing_mpi,
-    identityGaugefields_4D_nowing_mpi,
-    minusidentityGaugefields_4D_wing_mpi,
-    minusidentityGaugefields_4D_nowing_mpi,
-    thooftFlux_4D_B_at_bndry_wing_mpi,
-    thooftFlux_4D_B_at_bndry_nowing_mpi,
-    Gaugefields_4D_wing_mpi,
-    Gaugefields_4D_nowing_mpi,
-    calc_rank_and_indices,
-    barrier,
-    comm,
-    setvalue!
-#    end
+function __init__()
+    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" begin
+        import .AbstractGaugefields_module:
+        identityGaugefields_4D_wing_mpi,
+        identityGaugefields_4D_nowing_mpi,
+        minusidentityGaugefields_4D_wing_mpi,
+        minusidentityGaugefields_4D_nowing_mpi,
+        thooftFlux_4D_B_at_bndry_wing_mpi,
+        thooftFlux_4D_B_at_bndry_nowing_mpi,
+        Gaugefields_4D_wing_mpi,
+        Gaugefields_4D_nowing_mpi,
+        calc_rank_and_indices,
+        barrier,
+        comm,
+        setvalue!
+    end
+end
 
 #@require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
 #    import .AbstractGaugefields_module:

@@ -7,12 +7,18 @@ import ..AbstractGaugefields_module: AbstractGaugefields, TA_Gaugefields, evalua
     substitute_U!,
     clear_U!,
     multiply_12!,
-    add_U!, thooftFlux_4D_B_at_bndry_nowing_mpi
+    add_U!
 import Wilsonloop: loops_staple_prime, Wilsonline, get_position, get_direction, GLink, isdag, make_cloverloops
 import ..Wilsonloops_module: Wilson_loop_set
 import ..Temporalfields_module: Temporalfields, get_temp, unused!
 using LinearAlgebra
+using Requires
 
+function __init__()
+    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" begin
+        import ..AbstractGaugefields_module:thooftFlux_4D_B_at_bndry_nowing_mpi
+    end
+end
 
 
 
