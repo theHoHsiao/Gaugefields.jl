@@ -2,7 +2,7 @@ abstract type TA_Gaugefields_2D{NC} <: TA_Gaugefields{NC,2} end
 
 include("./TA_gaugefields_2D_serial.jl")
 
-
+include("./mpi_jacc/TA_gaugefields_2D_MPILattice.jl")
 
 
 @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" begin
@@ -10,7 +10,6 @@ include("./TA_gaugefields_2D_serial.jl")
     import ..AbstractGaugefields_module: Gaugefields_2D_nowing_mpi
 
     include("./TA_gaugefields_2D_mpi.jl")
-    include("./mpi_jacc/TA_gaugefields_2D_MPILattice.jl")
 end
 
 
