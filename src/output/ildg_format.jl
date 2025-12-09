@@ -504,9 +504,9 @@ function __init__()
             return
 
         end
-    end
+    #end
 
-    @require JACC = "0979c8fe-16a4-4796-9b82-89a9f10403ea" begin
+    #@require JACC = "0979c8fe-16a4-4796-9b82-89a9f10403ea" begin
         import ..AbstractGaugefields_module: Gaugefields_4D_MPILattice, set_halo!
         import LatticeMatrices: delinearize
 

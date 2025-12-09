@@ -22,6 +22,7 @@ function __init__()
         include("./mpi/gaugefields_4D_mpi_Bfields.jl")
         include("./mpi/gaugefields_4D_mpi_nowing.jl")
         include("./mpi/gaugefields_4D_mpi_nowing_Bfields.jl")
+        include("mpi_jacc/gaugefields_4D_MPILattice.jl")
     end
 
     @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
@@ -38,11 +39,6 @@ end
 #using MPI
 using JACC
 
-
-
-
-
-
 include("./kernelfunctions/gaugefields_4D_kernels.jl")
 include("./gaugefields_4D_accelerator.jl")
 
@@ -54,7 +50,7 @@ include("./kernelfunctions/gaugefields_4D_jacckernels.jl")
 
 
 
-include("mpi_jacc/gaugefields_4D_MPILattice.jl")
+
 
 
 function Base.size(U::Gaugefields_4D{NC}) where {NC}

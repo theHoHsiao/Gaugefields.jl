@@ -2,7 +2,7 @@ module Gaugefields
 
 using Requires
 
-include("./MPILattice/MPILattice.jl")
+
 #include("./MPILattice/src/MPILattice.jl")
 
 include("./Temporalfields/temporalfields.jl")
@@ -41,6 +41,8 @@ function __init__()
         barrier,
         comm,
         setvalue!
+
+        include("./MPILattice/MPILattice.jl")
     end
 end
 

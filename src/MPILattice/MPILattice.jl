@@ -1,4 +1,5 @@
 module MPILattice
+using ..Gaugefields
 import LatticeMatrices: LatticeMatrix,
     Shifted_Lattice,
     Adjoint_Lattice,
