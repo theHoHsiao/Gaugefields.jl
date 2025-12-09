@@ -16,13 +16,9 @@ include("./nowing/gaugefields_4D_nowing.jl")
 include("./nowing/gaugefields_4D_nowing_Bfields.jl")
 
 function __init__()
-    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" begin
+    #    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" begin
 
-        include("./mpi/gaugefields_4D_mpi.jl")
-        include("./mpi/gaugefields_4D_mpi_Bfields.jl")
-        include("./mpi/gaugefields_4D_mpi_nowing.jl")
-        include("./mpi/gaugefields_4D_mpi_nowing_Bfields.jl")
-    end
+    #    end
 
     @require CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba" begin
         include("./kernelfunctions/gaugefields_4D_cudakernels.jl")
@@ -30,14 +26,18 @@ function __init__()
         include("./kernelfunctions/linearalgebra_mul_NC_cuda.jl")
         include("./kernelfunctions/linearalgebra_mul_NC3_cuda.jl")
     end
+
     #    @require JACC = "0979c8fe-16a4-4796-9b82-89a9f10403ea" begin
 
     #    end
 end
 
-#using MPI
+using MPI
 using JACC
-
+include("./mpi/gaugefields_4D_mpi.jl")
+include("./mpi/gaugefields_4D_mpi_Bfields.jl")
+include("./mpi/gaugefields_4D_mpi_nowing.jl")
+include("./mpi/gaugefields_4D_mpi_nowing_Bfields.jl")
 
 
 

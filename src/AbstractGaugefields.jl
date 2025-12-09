@@ -109,7 +109,7 @@ mutable struct Data_sent{NC} #data format for MPI
     end
 end
 
-#using MPI
+using MPI
 using JACC
 
 include("./2D/gaugefields_2D.jl")
