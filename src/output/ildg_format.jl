@@ -251,15 +251,15 @@ function __init__()
             bytes_per_site = 2 * sizeof(bi.floattype) * Nfields
            
             
-            px, py, pz, pt = U[1].myrank_xyzt
+            px, py, pz, pt = U[1].myrank_xyzt .* U[1].PN
             # Assign data to local U
             for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
                 
                 # convert local coords to global coords
-                ixg = px * PN[1] + ix
-                iyg = py * PN[2] + iy
-                izg = pz * PN[3] + iz
-                itg = pt * PN[4] + it
+                ixg = px + ix
+                iyg = py + iy
+                izg = pz + iz
+                itg = pt + it
 
                 # global linear index
                 global_index =
@@ -522,26 +522,64 @@ function __init__()
 
             # 1. Read binary file on host
             bi = Binarydata_ILDG(filename, precision)
-            total_sites = NX * NY * NZ * NT
-            Nfields = 4 * NC * NC
-            total_elems = total_sites * Nfields
             
+            PN = U[1].U.PN  
 
+            Nfields = 4 * NC * NC
+            N_localsites = prod(PN)
+            total_elems = N_localsites * Nfields
+
+            offset_coords = U[1].U.coords .* PN
+            
             host_data = Vector{ComplexF64}(undef, total_elems)
-            for i = 1:total_elems # can be reduce to N_localsites with modified `read!(bi)`
-                host_data[i] = read!(bi)
+                      
+
+            bytes_per_site = 2 * sizeof(bi.floattype) * Nfields
+           
+            
+            # Assign data to local U
+            i = 1
+            for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
+                
+                # convert local coords to global coords
+                ixg = offset_coords[1] + ix
+                iyg = offset_coords[2] + iy
+                izg = offset_coords[3] + iz
+                itg = offset_coords[4] + it
+
+                # global linear index
+                global_index =
+                    (itg - 1) * (NZ * NY * NX) +
+                    (izg - 1) * (NY * NX) +
+                    (iyg - 1) * NX +
+                    (ixg - 1)
+                
+                skip = global_index * bytes_per_site
+
+                seek(bi.fp, skip)
+                for μ = 1:4
+                    for ic2 = 1:NC
+                        for ic1 = 1:NC
+                            host_data[i] = read!(bi)
+                            #println("i=$i value=$(host_data[i])")
+                            i += 1
+                        end
+                    end
+                end
             end
+            #for i = 1:total_elems # can be reduce to N_localsites with modified `read!(bi)`
+            #    host_data[i] = read!(bi)
+            #end
 
             # 2. Copy to device array
             device_data = JACC.array(host_data)
             
             # 3. Launch parallel kernel to assign to lattice
-            N_localsites = prod(U[1].U.PN)
-            offset_coords = U[1].U.coords .* U[1].U.PN
+            
             for μ = 1:4
             
                 JACC.parallel_for(N_localsites, kernel_assign_configuration!,
-                                U[μ].U.A, U[μ].U.indexer, U[μ].U.nw, device_data, NX, NY, NZ, NT, NC, μ, offset_coords)
+                                U[μ].U.A, U[μ].U.indexer, U[μ].U.nw, device_data, NC, μ)
 
                 set_halo!(U[μ].U)
             end
@@ -550,31 +588,27 @@ function __init__()
 
         @inline function kernel_assign_configuration!(
             i, u, dindexer, nw, data,
-            NX::Int, NY::Int, NZ::Int, NT::Int,
             NC::Int, μ::Int,
-            offset_coords)
+            )
+
             indices = delinearize(dindexer, i, nw)
             ix = indices[1]; iy = indices[2]; iz = indices[3]; it = indices[4]
 
             # Compute linear offset for this site
-            site_id = ( 
-                (it - 1 - nw + offset_coords[4]) * (NZ * NY * NX) + 
-                (iz - 1 - nw + offset_coords[3]) * (NY * NX) + 
-                (iy - 1 - nw + offset_coords[2]) * NX + 
-                (ix - 1 - nw + offset_coords[1])
-            )
-
-            # per-site stride (number of complex numbers stored for each site)
             site_stride = 4 * NC * NC
 
-            # base offset for this site and this μ (0-based)
-            base = site_id * site_stride + (μ - 1) * (NC * NC) 
+            # local site offset in `data` (i runs 1..N_localsites in the same order
+            # the host read loop filled host_data: ix fastest, then iy, iz, it)
+            site_offset = (i - 1) * site_stride
+
+            # offset for this μ block
+            mu_offset = (μ - 1) * (NC * NC)
+            base = site_offset + mu_offset
 
             @inbounds for ic2 = 1:NC
                 for ic1 = 1:NC
-                    offset = base + (ic2 - 1) * NC + (ic1 - 1)
-                    val = data[offset + 1]
-                    u[ic2, ic1, ix, iy, iz, it] = val
+                    color_offset = (ic2 - 1) * NC + (ic1 - 1)
+                    u[ic2, ic1, ix, iy, iz, it] = data[base + color_offset + 1]
                 end
             end
         end
