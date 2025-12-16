@@ -40,12 +40,12 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
     tempmatrix::Array{ComplexF64,3}
     positions::Vector{Int64}
     send_ranks::Dict{Int64,Data_sent{NC}}
-    #win::MPI.Win
-    #win_i::MPI.Win
-    #win_1i::MPI.Win
+    win::MPI.Win
+    win_i::MPI.Win
+    win_1i::MPI.Win
     countvec::Vector{Int64}
     otherranks::Vector{Int64}
-    #win_other::MPI.Win
+    win_other::MPI.Win
     your_ranks::Matrix{Int64}
     comm::MPI.Comm
 
@@ -105,14 +105,14 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
         positions = zeros(Int64, prod(PN))
         send_ranks = Dict{Int64,Data_sent{NC}}()
         mpi = true
-        #win = MPI.Win_create(tempmatrix, comm)
-        #win_i = MPI.Win_create(positions, comm)
+        win = MPI.Win_create(tempmatrix, comm)
+        win_i = MPI.Win_create(positions, comm)
         countvec = zeros(Int64, 1)
-        #win_1i = MPI.Win_create(countvec, comm)
+        win_1i = MPI.Win_create(countvec, comm)
 
         otherranks = zeros(Int64, nprocs)
         otherranks .= 0
-        #win_other = MPI.Win_create(otherranks, comm)
+        win_other = MPI.Win_create(otherranks, comm)
         your_ranks = zeros(Int64, nprocs, nprocs)
 
 
@@ -137,12 +137,12 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
             tempmatrix,
             positions,
             send_ranks,
-            #win,
-            #win_i,
-            #win_1i,
+            win,
+            win_i,
+            win_1i,
             countvec,
             otherranks,
-            #win_other,
+            win_other,
             your_ranks,
             comm,
         )
@@ -1308,8 +1308,8 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         #tempmatrix = zeros(ComplexF64,NC,NC,N)
         positions = U.positions
 
-        #win = U.win
-        win = MPI.Win_create(tempmatrix, U.comm)
+        win = U.win
+        #win = MPI.Win_create(tempmatrix, U.comm)
         #println(typeof(win))
         #Isend Irecv
         MPI.Win_fence(0, win)
@@ -1322,8 +1322,8 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         MPI.Win_fence(0, win)
         MPI.free(win)
 
-        #win_i = U.win_i#MPI.Win_create(positions,comm)
-        win_i = MPI.Win_create(positions, U.comm)
+        win_i = U.win_i#MPI.Win_create(positions,comm)
+        #win_i = MPI.Win_create(positions, U.comm)
         MPI.Win_fence(0, win_i)
 
         for (myrank_send, value) in send_ranks
@@ -1335,8 +1335,8 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         MPI.free(win_i)
 
         countvec = U.countvec#zeros(Int64,1)
-        #win_c = U.win_1i
-        win_c = MPI.Win_create(countvec, U.comm)
+        win_c = U.win_1i
+        #win_c = MPI.Win_create(countvec, U.comm)
         MPI.Win_fence(0, win_c)
 
         for (myrank_send, value) in send_ranks
@@ -1389,8 +1389,8 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     otherranks = U.otherranks
 
 
-    #win_other = U.win_other
-    win_other = MPI.Win_create(otherranks, U.comm)
+    win_other = U.win_other
+    #win_other = MPI.Win_create(otherranks, U.comm)
 
     MPI.Win_fence(0, win_other)
     myrank = get_myrank(U)
@@ -1407,18 +1407,18 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     #tempmatrix = zeros(ComplexF64,NC,NC,N)
     positions = U.positions
 
-    #win = U.win
-    win = MPI.Win_create(tempmatrix, U.comm)
+    win = U.win
+    #win = MPI.Win_create(tempmatrix, U.comm)
     #println(typeof(win))
     #Isend Irecv
 
-    #win_i = U.win_i#MPI.Win_create(positions,comm)
-    win_i = MPI.Win_create(positions, U.comm)
+    win_i = U.win_i#MPI.Win_create(positions,comm)
+    #win_i = MPI.Win_create(positions, U.comm)
 
-    #win_c = U.win_1i
+    win_c = U.win_1i
 
     countvec = U.countvec#zeros(Int64,1)
-    win_c = MPI.Win_create(countvec, U.comm)
+    #win_c = MPI.Win_create(countvec, U.comm)
 
     your_ranks = U.your_ranks #zeros(Int64,nprocs,nprocs)
     your_ranks .= -1
@@ -1431,7 +1431,7 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     end
     MPI.Win_fence(0, win_other)
 
-    MPI.free(win_other)
+    #MPI.free(win_other)
 
 
     MPI.Win_fence(0, win)
@@ -1469,11 +1469,11 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
 
 
     MPI.Win_fence(0, win)
-    MPI.free(win)
+    #MPI.free(win)
     MPI.Win_fence(0, win_i)
-    MPI.free(win_i)
+    #MPI.free(win_i)
     MPI.Win_fence(0, win_c)
-    MPI.free(win_c)
+    #MPI.free(win_c)
     #GC.enable(true)
 
     your_ranks .= -1
@@ -1568,331 +1568,6 @@ function shifted_U_improved!(U::Gaugefields_4D_nowing_mpi{NC}, shift) where {NC}
 
 
     end
-
-
-
-    PEs = U.PEs
-    PN = U.PN
-    myrank = U.myrank
-    myrank_xyzt = U.myrank_xyzt
-    myrank_xyzt_send = U.myrank_xyzt
-    #tempmatrix = zeros(ComplexF64,NC,NC)#view(U.tempmatrix,1:NC,1:NC,1) #zeros(ComplexF64,NC,NC)
-    tempmatrix_mini = view(U.tempmatrix, 1:NC, 1:NC, 1)
-
-    lat_size = size(U.Ushifted)
-    send_ranks = U.send_ranks
-    empty!(send_ranks)
-    # Dict{Int64,Data_sent}()
-    N = prod(U.PN)
-
-
-    #win = MPI.Win_create(U.Ushifted,comm)
-    #Isend Irecv
-
-    #MPI.Win_fence(0, win)
-
-
-    for it = 1:U.PN[4]
-        it_shifted = it - shift[4]
-        it_global = myrank_xyzt[4] * U.PN[4] + it
-        it_shifted_global = it_global - shift[4]
-        #if myrank_xyzt[4] == 0
-        while it_shifted_global < 1
-            it_shifted += U.NT
-            it_shifted_global += U.NT
-        end
-        #it_shifted += ifelse(it_shifted < 1,U.NT,0)
-        #end  
-        #if myrank_xyzt[4] == PEs[4]-1
-        while it_shifted_global > U.NT
-            it_shifted += -U.NT
-            it_shifted_global += -U.NT
-        end
-        #it_shifted += ifelse(it_shifted > U.PN[4],-U.NT,0)
-        #end
-        if it_shifted <= 0
-            tP = div(it_shifted, U.PN[4]) - 1
-        else
-            tP = div(it_shifted - 1, U.PN[4])
-        end
-        #if tP < 0 
-        #    println("it_shifted $it_shifted tP = $tP myrank_xyzt $myrank_xyzt it = $it shift = $shift it_shifted_global $it_shifted_global")
-        #end
-
-
-        #it_shifted += ifelse(it_shifted < 1,U.PN[4],0)
-        while it_shifted < 1
-            it_shifted += U.PN[4]
-        end
-        while it_shifted > U.PN[4]
-            it_shifted += -U.PN[4]
-        end
-        #it_shifted += ifelse(it_shifted > U.PN[4],-U.PN[4],0)
-
-
-        for iz = 1:U.PN[3]
-            iz_shifted = iz - shift[3]
-            iz_global = myrank_xyzt[3] * U.PN[3] + iz
-            iz_shifted_global = iz_global - shift[3]
-            #if myrank_xyzt[3] == 0
-            while iz_shifted_global < 1
-                iz_shifted += U.NZ
-                iz_shifted_global += U.NZ
-            end
-            #iz_shifted += ifelse(iz_shifted < 1,U.NZ,0)
-            #end
-            #if myrank_xyzt[3] == PEs[3]-1
-            while iz_shifted_global > U.NZ
-                iz_shifted += -U.NZ
-                iz_shifted_global += -U.NZ
-            end
-
-            #iz_shifted += ifelse(iz_shifted > U.PN[3],-U.NZ,0)
-            #end
-
-            if iz_shifted <= 0
-                zP = div(iz_shifted, U.PN[3]) - 1
-            else
-                zP = div(iz_shifted - 1, U.PN[3])
-            end
-
-
-
-            while iz_shifted < 1
-                iz_shifted += U.PN[3]
-            end
-            while iz_shifted > U.PN[3]
-                iz_shifted += -U.PN[3]
-            end
-            #iz_shifted += ifelse(iz_shifted < 1,U.PN[3],0)
-            #iz_shifted += ifelse(iz_shifted > U.PN[3],-U.PN[3],0)
-
-            for iy = 1:U.PN[2]
-
-                iy_shifted = iy - shift[2]
-                iy_global = myrank_xyzt[2] * U.PN[2] + iy
-                iy_shifted_global = iy_global - shift[2]
-                #if myrank_xyzt[2] == 0
-                while iy_shifted_global < 1
-                    iy_shifted += U.NY
-                    iy_shifted_global += U.NY
-                end
-
-                #iy_shifted += ifelse(iy_shifted < 1,U.NY,0)
-                #end
-                #if myrank_xyzt[2] == PEs[2]-1
-                while iy_shifted_global > U.NY
-                    iy_shifted += -U.NY
-                    iy_shifted_global += -U.NY
-                end
-                #iy_shifted += ifelse(iy_shifted > U.PN[2],-U.NY,0)
-                #end
-
-                if iy_shifted <= 0
-                    yP = div(iy_shifted, U.PN[2]) - 1
-                else
-                    yP = div(iy_shifted - 1, U.PN[2])
-                end
-
-
-                while iy_shifted < 1
-                    iy_shifted += U.PN[2]
-                end
-                while iy_shifted > U.PN[2]
-                    iy_shifted += -U.PN[2]
-                end
-                #iy_shifted += ifelse(iy_shifted < 1,U.PN[2],0)
-                #iy_shifted += ifelse(iy_shifted > U.PN[2],-U.PN[2],0)
-
-                for ix = 1:U.PN[1]
-                    ix_shifted = ix - shift[1]
-                    ix_global = myrank_xyzt[1] * U.PN[1] + ix
-                    ix_shifted_global = ix_global - shift[1]
-                    #if myrank_xyzt[1] == 0
-                    while ix_shifted_global < 1
-                        ix_shifted += U.NX
-                        ix_shifted_global += U.NX
-                    end
-                    #ix_shifted += ifelse(ix_shifted < 1,U.NX,0)
-                    #end
-                    #if myrank_xyzt[1] == PEs[1]-1
-                    while ix_shifted_global > U.NX
-                        ix_shifted += -U.NX
-                        ix_shifted_global += -U.NX
-                    end
-                    #ix_shifted += ifelse(ix_shifted > U.PN[1],-U.NX,0)
-                    #end
-
-
-                    if ix_shifted <= 0
-                        xP = div(ix_shifted, U.PN[1]) - 1
-                    else
-                        xP = div(ix_shifted - 1, U.PN[1])
-                    end
-
-
-                    while ix_shifted < 1
-                        ix_shifted += U.PN[1]
-                    end
-                    while ix_shifted > U.PN[1]
-                        ix_shifted += -U.PN[1]
-                    end
-                    #ix_shifted += ifelse(ix_shifted < 1,U.PN[1],0)
-                    #ix_shifted += ifelse(ix_shifted > U.PN[1],-U.PN[1],0)
-                    #xP = div(ix_shifted-1,U.PN[1])
-                    #println((tP,zP,yP,xP),"\t $shift")
-                    if tP == 0 && zP == 0 && yP == 0 && xP == 0
-                        for jc = 1:NC
-                            @simd for ic = 1:NC
-                                #v = getvalue(U,ic,jc,ix_shifted,iy_shifted,iz_shifted,it_shifted)
-                                #U.Ushifted[ic,jc,ix,iy,iz,it] = v
-                                v = getvalue(U, ic, jc, ix, iy, iz, it)
-                                U.Ushifted[
-                                    ic,
-                                    jc,
-                                    ix_shifted,
-                                    iy_shifted,
-                                    iz_shifted,
-                                    it_shifted,
-                                ] = v
-
-                            end
-                        end
-                    else
-                        update_sent_data!(
-                            send_ranks,
-                            N,
-                            ix,
-                            iy,
-                            iz,
-                            it,
-                            ix_shifted,
-                            iy_shifted,
-                            iz_shifted,
-                            it_shifted,
-                            PEs,
-                            myrank_xyzt,
-                            xP,
-                            yP,
-                            zP,
-                            tP,
-                            U,
-                        )
-                    end
-                end
-            end
-        end
-    end
-
-
-
-    #println("length = ",length(send_ranks))
-
-
-    #barrier(U)
-    if length(send_ranks) != 0
-        mpi_updates_U!(U, send_ranks)
-        #=
-        if length(send_ranks) == 1
-            mpi_updates_U_1data!(U,send_ranks)
-        else
-            mpi_updates_U_moredata!(U,send_ranks)
-        end
-        =#
-    end
-    #=
-    if length(send_ranks) != 0
-        #=
-        for rank=0:get_nprocs(U)
-            if rank == get_myrank(U)
-                println("myrank = ",myrank)
-                for (key,value) in send_ranks
-                    println(key,"\t",value.count)
-                end
-            end
-            barrier(U)
-        end
-
-        =#
-        tempmatrix = U.tempmatrix #zeros(ComplexF64,NC,NC,N)
-        #tempmatrix = zeros(ComplexF64,NC,NC,N)
-        positions = U.positions
-
-        win = MPI.Win_create(tempmatrix,comm)
-        #Isend Irecv
-        MPI.Win_fence(0, win)
-
-        for (myrank_send,value) in send_ranks
-            count = value.count
-            MPI.Put(value.data[:,:,1:count], myrank_send,win)
-        end
-
-        MPI.Win_fence(0, win)
-        MPI.free(win)
-
-        win_i = MPI.Win_create(positions,comm)
-        MPI.Win_fence(0, win_i)
-
-        for (myrank_send,value) in send_ranks
-            count = value.count
-            MPI.Put(value.positions[1:count], myrank_send,win_i)
-        end
-
-        MPI.Win_fence(0, win_i)
-        MPI.free(win_i)
-
-        countvec = zeros(Int64,1)
-
-        win_c = MPI.Win_create(countvec,comm)
-        MPI.Win_fence(0, win_c)
-
-        for (myrank_send,value) in send_ranks
-            count = value.count
-            MPI.Put(Int64[count], myrank_send,win_c)
-        end
-
-        MPI.Win_fence(0, win_c)
-        MPI.free(win_c)
-
-        count = countvec[1]
-
-
-
-        #=
-        for rank=0:get_nprocs(U)
-            if rank == get_myrank(U)
-                println("myrank = ",myrank)
-                for position in positions[1:count]
-                    println(position)
-                end
-            end
-            barrier(U)
-        end
-        =#
-
-        for i = 1:count
-            position = positions[i]
-            for jc = 1:NC
-                for ic= 1:NC
-                    ii = ((position-1)*NC + jc-1)*NC + ic
-                    U.Ushifted[ii] = tempmatrix[ic,jc,i]
-                end
-            end
-            #println(position)
-        end
-
-        #error("in shiftdU")
-    end
-    =#
-
-
-
-
-    #MPI.Win_fence(0, win)
-
-    #MPI.free(win)
-
-
 
 end
 
