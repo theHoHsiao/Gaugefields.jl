@@ -1,4 +1,4 @@
-
+using StaticArrays: @MMatrix
 
 #=
 module Gaugefields_4D_mpi_module
@@ -586,8 +586,8 @@ function map_U!(
     iseven::Bool,
 ) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
-    B = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
+    B = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
             for iy = 1:U.PN[2]
@@ -623,8 +623,8 @@ function map_U!(
     V::Gaugefields_4D_nowing_mpi{NC},
 ) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
-    B = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
+    B = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
             for iy = 1:U.PN[2]
@@ -661,8 +661,8 @@ function map_U!(
     V::Gaugefields_4D_nowing_mpi{NC},
 ) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
-    B = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
+    B = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
             for iy = 1:U.PN[2]
@@ -1904,7 +1904,7 @@ function shifted_U!(U::Gaugefields_4D_nowing_mpi{NC}, shift) where {NC}
     myrank = U.myrank
     myrank_xyzt = U.myrank_xyzt
     myrank_xyzt_send = U.myrank_xyzt
-    tempmatrix = zeros(ComplexF64, NC, NC)
+    tempmatrix = @MMatrix zeros(ComplexF64, NC, NC)
 
     win = MPI.Win_create(U.Ushifted, U[1].comm)
     #Isend Irecv
@@ -2201,7 +2201,7 @@ end
 
 function normalize_U!(U::Gaugefields_4D_nowing_mpi{NC}) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
 
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
@@ -2285,8 +2285,8 @@ function exptU!(
     NZ = u.NZ
     NY = u.NY
     NX = u.NX
-    V0 = zeros(ComplexF64, NC, NC)
-    V1 = zeros(ComplexF64, NC, NC)
+    V0 = @MMatrix zeros(ComplexF64, NC, NC)
+    V1 = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:u.PN[4]
         for iz = 1:u.PN[3]
             for iy = 1:u.PN[2]
@@ -4167,7 +4167,7 @@ function construct_Λmatrix_forSTOUT!(
     NY = u.PN[2]
     NX = u.PN[1]
 
-    Qn = zeros(ComplexF64, NC, NC)
+    Qn = @MMatrix zeros(ComplexF64, NC, NC)
     Un = zero(Qn)
     Mn = zero(Qn)
     Λn = zero(Qn)
