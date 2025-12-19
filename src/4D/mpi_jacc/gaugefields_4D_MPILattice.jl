@@ -464,3 +464,38 @@ function unit_U!(U::Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NumofBasis}
     makeidentity_matrix!(U.U)
     set_wing_U!(U)
 end
+
+
+function calculate_Polyakov_loop(
+    U::Array{T,1},
+    temp1::Gaugefields_4D_MPILattice{NC},
+    temp2::Gaugefields_4D_MPILattice{NC},
+) where {NC,NX,NY,NZ,NT,T<:Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT}}
+    Dim = 4
+    Uold = temp1
+    Unew = temp2
+    shift = zeros(Int64, Dim)
+
+    μ = Dim
+    NN = U[1].U.PN # local NC,NC,NX,NY,NZ,NT 
+
+    substitute_U!(Uold, U[μ])
+    for i = 2:NT
+        shift[μ] = i - 1
+        U1 = shift_U(U[μ], Tuple(shift))
+        mul_skiplastindex!(Unew, Uold, U1)
+        Uold, Unew = Unew, Uold
+    end
+
+    set_wing_U!(Uold)
+    poly = partial_tr(Uold, μ) / prod(NN[1:Dim-1])
+    poly /= prod(U[1].U.dims)  # normalize by number of processors
+    return poly
+
+end
+
+
+function barrier(x::T) where {T<:Gaugefields_4D_MPILattice}
+    #println("ba")
+    MPI.Barrier(x.U.comm)
+end
