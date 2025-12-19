@@ -38,8 +38,8 @@ function __init__()
             barrier(U[1])
 
             N = NC * NC * 4
-            send_mesg1 = Array{ComplexF64}(undef, 1)
-            recv_mesg1 = Array{ComplexF64}(undef, 1)
+            #send_mesg1 = Array{ComplexF64}(undef, 1)
+            #recv_mesg1 = Array{ComplexF64}(undef, 1)
 
             send_mesg = Array{ComplexF64}(undef, N)
             recv_mesg = Array{ComplexF64}(undef, N)
@@ -399,8 +399,8 @@ function __init__()
             barrier(U[1])
 
             N = NC * NC * 4
-            send_mesg1 = Array{ComplexF64}(undef, 1)
-            recv_mesg1 = Array{ComplexF64}(undef, 1)
+            #send_mesg1 = Array{ComplexF64}(undef, 1)
+            #recv_mesg1 = Array{ComplexF64}(undef, 1)
 
             send_mesg = Array{ComplexF64}(undef, N)
             recv_mesg = Array{ComplexF64}(undef, N)
@@ -609,6 +609,119 @@ function __init__()
                 for ic1 = 1:NC
                     color_offset = (ic2 - 1) * NC + (ic1 - 1)
                     u[ic2, ic1, ix, iy, iz, it] = data[base + color_offset + 1]
+                end
+            end
+        end
+
+
+        function save_binarydata(
+                    U::Array{T,1},
+                    filename; tempfile1="testbin.dat", tempfile2="filelist.dat"
+                ) where {T<:Gaugefields_4D_MPILattice}
+
+            # 1. Setup dimensions
+            NX, NY, NZ, NT = U[1].NX, U[1].NY, U[1].NZ, U[1].NT
+            NC = U[1].NC
+            PN = U[1].U.PN
+            N_localsites = prod(PN)
+            Nfields = 4 * NC * NC
+            coords = U[1].U.coords
+
+            nprocs = MPI.Comm_size(U[1].U.comm)
+            
+            # Coordinate offset for this specific MPI rank
+            offset_coords =  coords.* PN
+            
+            # Ensure all ranks are ready
+            barrier(U[1])
+
+            # 2. Extract GPU data to Host
+            # We do this in parallel across all ranks first
+            host_buffer = Vector{ComplexF64}(undef, N_localsites * Nfields)
+            device_buffer = JACC.array(host_buffer)
+
+            for μ = 1:4
+                JACC.parallel_for(N_localsites, kernel_pack_configuration!,
+                                U[μ].U.A, U[μ].U.indexer, U[μ].U.nw, device_buffer, NC, μ)
+            end
+            copyto!(host_buffer, device_buffer)
+
+            # 3. Sequential Write (Token Passing)
+            # Rank 0 creates the file first to truncate any existing data
+            if U[1].U.myrank == 0
+                fp = open(tempfile1, "w")
+                close(fp)
+            end
+            barrier(U[1])
+
+            bytes_per_site = 2 * 8 * Nfields # 2 (complex) * 8 bytes (Float64) * Nfields
+
+            # Loop through all ranks; only one rank writes at a time
+            for r in 0:(nprocs - 1)
+                if U[1].U.myrank == r
+                    # Open in read-write mode without truncating ("r+")
+                    open(tempfile1, "r+") do fp
+                        i = 1
+                        for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
+                            # Calculate global coordinates for this local site
+                            ixg = offset_coords[1] + ix
+                            iyg = offset_coords[2] + iy
+                            izg = offset_coords[3] + iz
+                            itg = offset_coords[4] + it
+
+                            # Calculate global seek position (Matches your load_binarydata logic)
+                            global_index = (itg - 1) * (NZ * NY * NX) +
+                                        (izg - 1) * (NY * NX) +
+                                        (iyg - 1) * NX +
+                                        (ixg - 1)
+                            
+                            seek(fp, global_index * bytes_per_site)
+
+                            # Write the block for this site (μ, then colors)
+                            for k = 1:Nfields
+                                v = host_buffer[i]
+                                # hton converts to Big Endian for ILDG compatibility
+                                write(fp, hton(real(v)))
+                                write(fp, hton(imag(v)))
+                                i += 1
+                            end
+                        end
+                    end
+                end
+                # Wait for rank 'r' to finish writing and close the file
+                barrier(U[1])
+            end
+
+            # 4. Finalize LIME packaging on Rank 0
+            if U[1].U.myrank == 0
+                # Create the file list for the lime_pack utility
+                open(tempfile2, "w") do fp_list
+                    println(fp_list, "$tempfile1 ", "ildg-binary-data")
+                end
+
+                # Execute the external lime_pack tool
+                lime_pack() do exe
+                    run(`$exe $tempfile2 $filename`)
+                end
+            end
+
+            barrier(U[1])
+            return
+        end
+
+        @inline function kernel_pack_configuration!(i, u, dindexer, nw, data, NC, μ)
+            indices = delinearize(dindexer, i, nw)
+            ix, iy, iz, it = indices[1], indices[2], indices[3], indices[4]
+
+            site_stride = 4 * NC * NC
+            site_offset = (i - 1) * site_stride
+            mu_offset = (μ - 1) * (NC * NC)
+            base = site_offset + mu_offset
+
+            @inbounds for ic2 = 1:NC
+                for ic1 = 1:NC
+                    color_offset = (ic2 - 1) * NC + (ic1 - 1)
+                    data[base + color_offset + 1] = u[ic2, ic1, ix, iy, iz, it]
                 end
             end
         end
