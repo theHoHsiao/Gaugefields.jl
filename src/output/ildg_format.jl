@@ -241,7 +241,6 @@ function __init__()
             precision,
         ) where {T<:Gaugefields_4D_nowing_mpi}
 
-            myrank = U[1].myrank
             comm = MPI.COMM_WORLD
             PN = U[1].PN            
 
@@ -253,6 +252,8 @@ function __init__()
             
             px, py, pz, pt = U[1].myrank_xyzt .* U[1].PN
             # Assign data to local U
+            sitebuf = Vector{ComplexF64}(undef, Nfields)
+            rawbuf = Vector{UInt8}(undef, 2 * sizeof(bi.floattype) * length(sitebuf))
             for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
                 
                 # convert local coords to global coords
@@ -271,12 +272,15 @@ function __init__()
                 skip = global_index * bytes_per_site
 
                 seek(bi.fp, skip)
+                read_site!(bi, sitebuf, rawbuf)
+                buf_index = 1
                 for μ = 1:4
                     for ic2 = 1:NC
                         for ic1 = 1:NC
-                            
-                            val = read!(bi)
+
+                            val = sitebuf[buf_index]
                             setvalue!(U[μ], val, ic2, ic1, ix, iy, iz, it)
+                            buf_index += 1
                         end
                     end
                 end
@@ -539,6 +543,8 @@ function __init__()
             
             # Assign data to local U
             i = 1
+            sitebuf = Vector{ComplexF64}(undef, Nfields)
+            rawbuf = Vector{UInt8}(undef, 2 * sizeof(bi.floattype) * length(sitebuf))
             for it = 1:PN[4], iz = 1:PN[3], iy = 1:PN[2], ix = 1:PN[1]
                 
                 # convert local coords to global coords
@@ -557,12 +563,15 @@ function __init__()
                 skip = global_index * bytes_per_site
 
                 seek(bi.fp, skip)
+                read_site!(bi, sitebuf, rawbuf)
+                buf_index = 1
                 for μ = 1:4
                     for ic2 = 1:NC
                         for ic1 = 1:NC
-                            host_data[i] = read!(bi)
-                            #println("i=$i value=$(host_data[i])")
+
+                            host_data[i] = sitebuf[buf_index]
                             i += 1
+                            buf_index += 1
                         end
                     end
                 end
@@ -852,10 +861,47 @@ mutable struct Binarydata_ILDG
 end
 
 function read!(x::Binarydata_ILDG)
-    x.count += 1
+    #x.count += 1
     rvalue = ntoh(read(x.fp, x.floattype))
     ivalue = ntoh(read(x.fp, x.floattype))
     return rvalue + im * ivalue
+end
+
+
+@inline function read!(x::Binarydata_ILDG, out::Ref{Complex{T}}) where {T}
+    r = ntoh(read(x.fp, T))
+    i = ntoh(read(x.fp, T))
+    out[] = Complex{T}(r, i)
+end
+
+
+@inline function read_site!(bi::Binarydata_ILDG, buf::Vector{Complex{T}}) where {T}
+    @inbounds for i in eachindex(buf)
+        r = ntoh(read(bi.fp, T))
+        i2 = ntoh(read(bi.fp, T))
+        buf[i] = Complex{T}(r, i2)
+    end
+    bi.count += length(buf)
+end
+
+
+@inline function read_site!(
+    bi::Binarydata_ILDG,
+    buf::Vector{Complex{T}},
+    rawbuf::Vector{UInt8},
+) where {T}
+
+    Base.read!(bi.fp, rawbuf)
+
+    data = reinterpret(T, rawbuf)
+
+    idx = 1
+    @inbounds for i in eachindex(buf)
+        r  = ntoh(data[idx])
+        im = ntoh(data[idx + 1])
+        buf[i] = Complex{T}(r, im)
+        idx += 2
+    end
 end
 
 #=
