@@ -1,5 +1,5 @@
 module AbstractGaugefields_module
-using LinearAlgebra
+using LinearAlgebra, StaticArrays
 import ..Wilsonloops_module:
     Wilson_loop_set,
     calc_coordinate,
@@ -2634,6 +2634,36 @@ function gramschmidt!(v)
             v[:, i] = v[:, i] - v[:, j]' * v[:, i] * v[:, j]
         end
         v[:, i] = v[:, i] / norm(v[:, i])
+    end
+end
+
+
+@inline function gramschmidt!(v::StaticArrays.MMatrix{N,N,T}) where {N,T}
+    @inbounds for i = 1:N
+
+        # subtract projections
+        for j = 1:i-1
+            # dot = v[:,j]' * v[:,i]
+            dot = zero(T)
+            @simd for k = 1:N
+                dot += conj(v[k, j]) * v[k, i]
+            end
+
+            @simd for k = 1:N
+                v[k, i] -= dot * v[k, j]
+            end
+        end
+
+        # normalize column i
+        nrm2 = zero(real(T))
+        @simd for k = 1:N
+            nrm2 += abs2(v[k, i])
+        end
+        invnrm = inv(sqrt(nrm2))
+
+        @simd for k = 1:N
+            v[k, i] *= invnrm
+        end
     end
 end
 
