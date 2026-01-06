@@ -874,7 +874,11 @@ function shifted_U_improved_xshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
+
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -979,7 +983,10 @@ function shifted_U_improved_yshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -1086,7 +1093,10 @@ function shifted_U_improved_zshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -1193,7 +1203,10 @@ function shifted_U_improved_tshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -1581,7 +1594,10 @@ function shifted_U_improved!(U::Gaugefields_4D_nowing_mpi{NC}, shift) where {NC}
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
