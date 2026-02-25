@@ -38,17 +38,18 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
     verbose_print::Verbose_print
     Ushifted::Array{ComplexF64,6}
     tempmatrix::Array{ComplexF64,3}
-    positions::Vector{Int64}
+    #positions::Vector{Int64}
     send_ranks::Dict{Int64,Data_sent{NC}}
     win::MPI.Win
-    win_i::MPI.Win
-    win_1i::MPI.Win
-    countvec::Vector{Int64}
-    otherranks::Vector{Int64}
-    win_other::MPI.Win
-    your_ranks::Matrix{Int64}
+    #win_i::MPI.Win
+    #win_1i::MPI.Win
+    #countvec::Vector{Int64}
+    #otherranks::Vector{Int64}
+    #win_other::MPI.Win
+    #your_ranks::Matrix{Int64}
     comm::MPI.Comm
-
+    basic_type:: MPI.Datatype
+    disp_buffer::Vector{Cint}
 
     function Gaugefields_4D_nowing_mpi(
         NC::T,
@@ -101,19 +102,25 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
         #for μ=1:4
         #    U[μ] = zeros(ComplexF64,NC,NC,NX+2NDW,NY+2NDW,NZ+2NDW,NT+2NDW)
         #end
-        tempmatrix = zeros(ComplexF64, NC, NC, prod(PN))
-        positions = zeros(Int64, prod(PN))
+        #tempmatrix = zeros(ComplexF64, NC, NC, prod(PN))
+        tempmatrix = zeros(ComplexF64, NC, NC, 1)
+        #positions = zeros(Int64, prod(PN))
+        #positions = zeros(Int64, 1)
         send_ranks = Dict{Int64,Data_sent{NC}}()
         mpi = true
-        win = MPI.Win_create(tempmatrix, comm)
-        win_i = MPI.Win_create(positions, comm)
-        countvec = zeros(Int64, 1)
-        win_1i = MPI.Win_create(countvec, comm)
+        #win = MPI.Win_create(tempmatrix, comm)
+        win = MPI.Win_create(Ushifted, comm)
+        basic_type = MPI.Datatype(ComplexF64)
+        disp_buffer = zeros(Cint, prod(PN))
+        #win_i = MPI.Win_create(positions, comm)
+        #countvec = zeros(Int64, 1)
+        #win_1i = MPI.Win_create(countvec, comm)
 
-        otherranks = zeros(Int64, nprocs)
-        otherranks .= 0
-        win_other = MPI.Win_create(otherranks, comm)
-        your_ranks = zeros(Int64, nprocs, nprocs)
+        #otherranks = zeros(Int64, nprocs)
+        #otherranks .= 0
+        #win_other = MPI.Win_create(otherranks, comm)
+        #your_ranks = zeros(Int64, nprocs, nprocs)
+        #send_types = Dict{Int, MPI.Datatype}()
 
 
         return new{NC}(
@@ -135,16 +142,18 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
             verbose_print,
             Ushifted,
             tempmatrix,
-            positions,
+            #positions,
             send_ranks,
             win,
-            win_i,
-            win_1i,
-            countvec,
-            otherranks,
-            win_other,
-            your_ranks,
+            #win_i,
+            #win_1i,
+            #countvec,
+            #otherranks,
+            #win_other,
+            #your_ranks,
             comm,
+            basic_type,
+            disp_buffer,
         )
     end
 end
@@ -1317,7 +1326,7 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
             barrier(U)
         end
         =#
-        tempmatrix = U.tempmatrix #zeros(ComplexF64,NC,NC,N)
+        #tempmatrix = U.tempmatrix #zeros(ComplexF64,NC,NC,N)
         #tempmatrix = zeros(ComplexF64,NC,NC,N)
         positions = U.positions
 
@@ -1333,7 +1342,7 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         end
 
         MPI.Win_fence(0, win)
-        MPI.free(win)
+        #MPI.free(win)
 
         win_i = U.win_i#MPI.Win_create(positions,comm)
         #win_i = MPI.Win_create(positions, U.comm)
@@ -1345,7 +1354,7 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         end
 
         MPI.Win_fence(0, win_i)
-        MPI.free(win_i)
+        #MPI.free(win_i)
 
         countvec = U.countvec#zeros(Int64,1)
         win_c = U.win_1i
@@ -1358,7 +1367,7 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         end
 
         MPI.Win_fence(0, win_c)
-        MPI.free(win_c)
+        #MPI.free(win_c)
 
         count = countvec[1]
 
@@ -1394,7 +1403,7 @@ end
 
 const printdata = false
 
-function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
+function mpi_updates_U_moredata_old!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
 
 
 
@@ -1508,6 +1517,54 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     otherranks .= 0
 
 end
+
+
+function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
+    win = U.win 
+    basic_type = U.basic_type
+
+    MPI.Win_fence(0, win)
+
+    for (myrank_send, value) in send_ranks
+        count = value.count
+        count == 0 && continue
+            
+        #displacements = Vector{Cint}((value.positions[1:count] .- 1) .* (NC * NC))
+        for i in 1:count
+            # Fill the pre-allocated buffer
+            # We use NC*NC because MPI displacements are usually relative to the base type
+            U.disp_buffer[i] = Cint((value.positions[i] - 1) * (NC * NC))
+        end
+            
+        newtype_ref = Ref{MPI.MPI_Datatype}()
+        MPI.API.MPI_Type_create_indexed_block(
+            Cint(count), 
+            Cint(NC * NC), 
+            U.disp_buffer, #displacements, 
+            basic_type.val, 
+            newtype_ref
+        )
+        temp_target_dtype = newtype_ref[]
+        MPI.API.MPI_Type_commit(Ref(temp_target_dtype))
+
+        # --- PERFORM THE PUT ---
+        MPI.API.MPI_Put(
+            pointer(value.data), 
+            Cint(count * NC * NC), 
+            basic_type.val, 
+            Cint(myrank_send), 
+            Cptrdiff_t(0), 
+            Cint(1), 
+            temp_target_dtype, 
+            win.val
+        )
+
+        #MPI.API.MPI_Type_free(Ref(temp_target_dtype))
+    end
+
+    MPI.Win_fence(0, win)
+end
+
 
 function mpi_updates_U!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
     if length(send_ranks) != 0
@@ -2150,7 +2207,7 @@ function shifted_U!(U::Gaugefields_4D_nowing_mpi{NC}, shift) where {NC}
 
     MPI.Win_fence(0, win)
 
-    MPI.free(win)
+    #MPI.free(win)
 
 
 
