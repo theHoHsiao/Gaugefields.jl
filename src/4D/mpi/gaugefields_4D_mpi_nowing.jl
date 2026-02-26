@@ -1523,46 +1523,48 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     win = U.win 
     basic_type = U.basic_type
 
-    MPI.Win_fence(0, win)
+    GC.@preserve U send_ranks begin
+        MPI.Win_fence(0, win)
 
-    for (myrank_send, value) in send_ranks
-        count = value.count
-        count == 0 && continue
-            
-        #displacements = Vector{Cint}((value.positions[1:count] .- 1) .* (NC * NC))
-        for i in 1:count
-            # Fill the pre-allocated buffer
-            # We use NC*NC because MPI displacements are usually relative to the base type
-            U.disp_buffer[i] = Cint((value.positions[i] - 1) * (NC * NC))
+        for (myrank_send, value) in send_ranks
+            count = value.count
+            count == 0 && continue
+                
+            #displacements = Vector{Cint}((value.positions[1:count] .- 1) .* (NC * NC))
+            for i in 1:count
+                # Fill the pre-allocated buffer
+                # We use NC*NC because MPI displacements are usually relative to the base type
+                U.disp_buffer[i] = Cint((value.positions[i] - 1) * (NC * NC))
+            end
+                
+            newtype_ref = Ref{MPI.MPI_Datatype}()
+            MPI.API.MPI_Type_create_indexed_block(
+                Cint(count), 
+                Cint(NC * NC), 
+                U.disp_buffer, #displacements, 
+                basic_type.val, 
+                newtype_ref
+            )
+            temp_target_dtype = newtype_ref[]
+            MPI.API.MPI_Type_commit(Ref(temp_target_dtype))
+
+            # --- PERFORM THE PUT ---
+            MPI.API.MPI_Put(
+                pointer(value.data), 
+                Cint(count * NC * NC), 
+                basic_type.val, 
+                Cint(myrank_send), 
+                Cptrdiff_t(0), 
+                Cint(1), 
+                temp_target_dtype, 
+                win.val
+            )
+
+            MPI.API.MPI_Type_free(Ref(temp_target_dtype))
         end
-            
-        newtype_ref = Ref{MPI.MPI_Datatype}()
-        MPI.API.MPI_Type_create_indexed_block(
-            Cint(count), 
-            Cint(NC * NC), 
-            U.disp_buffer, #displacements, 
-            basic_type.val, 
-            newtype_ref
-        )
-        temp_target_dtype = newtype_ref[]
-        MPI.API.MPI_Type_commit(Ref(temp_target_dtype))
 
-        # --- PERFORM THE PUT ---
-        MPI.API.MPI_Put(
-            pointer(value.data), 
-            Cint(count * NC * NC), 
-            basic_type.val, 
-            Cint(myrank_send), 
-            Cptrdiff_t(0), 
-            Cint(1), 
-            temp_target_dtype, 
-            win.val
-        )
-
-        MPI.API.MPI_Type_free(Ref(temp_target_dtype))
+        MPI.Win_fence(0, win)
     end
-
-    MPI.Win_fence(0, win)
 end
 
 
