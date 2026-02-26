@@ -1559,7 +1559,7 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
             win.val
         )
 
-        #MPI.API.MPI_Type_free(Ref(temp_target_dtype))
+        MPI.API.MPI_Type_free(Ref(temp_target_dtype))
     end
 
     MPI.Win_fence(0, win)
