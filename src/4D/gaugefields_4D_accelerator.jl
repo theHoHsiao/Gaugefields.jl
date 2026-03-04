@@ -101,8 +101,11 @@ struct Gaugefields_4D_accelerator{NC,TU,TUv,accdevise,TshifedU} <: Gaugefields_4
             #error(iscudadefined)
             if iscudadefined
                 if CUDA.has_cuda()
-                    U = CUDA.CuArray(Ucpu)
-                    temp_volume = CUDA.CuArray(temp_volume_cpu)
+                    #U = CUDA.CuArray(Ucpu)
+                    #temp_volume = CUDA.CuArray(temp_volume_cpu)
+                    U = CUDA.CuArray{dtype, 4, CUDA.UnifiedMemory}(Ucpu)
+                    temp_volume = CUDA.CuArray{dtype, 2, CUDA.Mem.UnifiedBuffer}(temp_volume_cpu)
+                    
                     accdevise = :cuda
                 else
                     @warn "accelerator=\"cuda\" is set but there is no CUDA devise. CPU will be used"
