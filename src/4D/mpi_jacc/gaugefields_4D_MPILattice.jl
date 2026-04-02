@@ -484,3 +484,21 @@ export Traceless_AntiHermitian
     return
     #set_halo!(C)
 end
+
+
+function exptU!(
+    uout::Tg,
+    t::N,
+    v::Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NumofBasis},
+    temps::Array{Tg,1},
+) where {NC,NX,NY,NZ,NT,T,AT,NumofBasis,Tg<:Gaugefields_4D_MPILattice,N<:Number} #uout = exp(t*u)
+
+    if NC > 3
+        Uta = temps[1]
+        substitute_U!(Uta, v)
+        error("not implemented for NC > 3")
+    else
+        expt!(uout.U, v.U, t)
+    end
+    set_wing_U!(uout)
+end
