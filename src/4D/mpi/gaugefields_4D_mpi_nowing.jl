@@ -1,4 +1,4 @@
-
+using StaticArrays: @MMatrix
 
 #=
 module Gaugefields_4D_mpi_module
@@ -38,17 +38,18 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
     verbose_print::Verbose_print
     Ushifted::Array{ComplexF64,6}
     tempmatrix::Array{ComplexF64,3}
-    positions::Vector{Int64}
+    #positions::Vector{Int64}
     send_ranks::Dict{Int64,Data_sent{NC}}
-    #win::MPI.Win
+    win::MPI.Win
     #win_i::MPI.Win
     #win_1i::MPI.Win
-    countvec::Vector{Int64}
-    otherranks::Vector{Int64}
+    #countvec::Vector{Int64}
+    #otherranks::Vector{Int64}
     #win_other::MPI.Win
-    your_ranks::Matrix{Int64}
+    #your_ranks::Matrix{Int64}
     comm::MPI.Comm
-
+    basic_type:: MPI.Datatype
+    disp_buffer::Vector{Cint}
 
     function Gaugefields_4D_nowing_mpi(
         NC::T,
@@ -101,19 +102,25 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
         #for μ=1:4
         #    U[μ] = zeros(ComplexF64,NC,NC,NX+2NDW,NY+2NDW,NZ+2NDW,NT+2NDW)
         #end
-        tempmatrix = zeros(ComplexF64, NC, NC, prod(PN))
-        positions = zeros(Int64, prod(PN))
+        #tempmatrix = zeros(ComplexF64, NC, NC, prod(PN))
+        tempmatrix = zeros(ComplexF64, NC, NC, 1)
+        #positions = zeros(Int64, prod(PN))
+        #positions = zeros(Int64, 1)
         send_ranks = Dict{Int64,Data_sent{NC}}()
         mpi = true
         #win = MPI.Win_create(tempmatrix, comm)
+        win = MPI.Win_create(Ushifted, comm)
+        basic_type = MPI.Datatype(ComplexF64)
+        disp_buffer = zeros(Cint, prod(PN))
         #win_i = MPI.Win_create(positions, comm)
-        countvec = zeros(Int64, 1)
+        #countvec = zeros(Int64, 1)
         #win_1i = MPI.Win_create(countvec, comm)
 
-        otherranks = zeros(Int64, nprocs)
-        otherranks .= 0
+        #otherranks = zeros(Int64, nprocs)
+        #otherranks .= 0
         #win_other = MPI.Win_create(otherranks, comm)
-        your_ranks = zeros(Int64, nprocs, nprocs)
+        #your_ranks = zeros(Int64, nprocs, nprocs)
+        #send_types = Dict{Int, MPI.Datatype}()
 
 
         return new{NC}(
@@ -135,16 +142,18 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
             verbose_print,
             Ushifted,
             tempmatrix,
-            positions,
+            #positions,
             send_ranks,
-            #win,
+            win,
             #win_i,
             #win_1i,
-            countvec,
-            otherranks,
+            #countvec,
+            #otherranks,
             #win_other,
-            your_ranks,
+            #your_ranks,
             comm,
+            basic_type,
+            disp_buffer,
         )
     end
 end
@@ -586,8 +595,8 @@ function map_U!(
     iseven::Bool,
 ) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
-    B = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
+    B = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
             for iy = 1:U.PN[2]
@@ -623,8 +632,8 @@ function map_U!(
     V::Gaugefields_4D_nowing_mpi{NC},
 ) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
-    B = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
+    B = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
             for iy = 1:U.PN[2]
@@ -661,8 +670,8 @@ function map_U!(
     V::Gaugefields_4D_nowing_mpi{NC},
 ) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
-    B = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
+    B = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
             for iy = 1:U.PN[2]
@@ -874,7 +883,11 @@ function shifted_U_improved_xshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
+
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -979,7 +992,10 @@ function shifted_U_improved_yshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -1086,7 +1102,10 @@ function shifted_U_improved_zshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -1193,7 +1212,10 @@ function shifted_U_improved_tshift!(U::Gaugefields_4D_nowing_mpi{NC}, shift) whe
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -1304,12 +1326,12 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
             barrier(U)
         end
         =#
-        tempmatrix = U.tempmatrix #zeros(ComplexF64,NC,NC,N)
+        #tempmatrix = U.tempmatrix #zeros(ComplexF64,NC,NC,N)
         #tempmatrix = zeros(ComplexF64,NC,NC,N)
         positions = U.positions
 
-        #win = U.win
-        win = MPI.Win_create(tempmatrix, U.comm)
+        win = U.win
+        #win = MPI.Win_create(tempmatrix, U.comm)
         #println(typeof(win))
         #Isend Irecv
         MPI.Win_fence(0, win)
@@ -1320,10 +1342,10 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         end
 
         MPI.Win_fence(0, win)
-        MPI.free(win)
+        #MPI.free(win)
 
-        #win_i = U.win_i#MPI.Win_create(positions,comm)
-        win_i = MPI.Win_create(positions, U.comm)
+        win_i = U.win_i#MPI.Win_create(positions,comm)
+        #win_i = MPI.Win_create(positions, U.comm)
         MPI.Win_fence(0, win_i)
 
         for (myrank_send, value) in send_ranks
@@ -1332,11 +1354,11 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         end
 
         MPI.Win_fence(0, win_i)
-        MPI.free(win_i)
+        #MPI.free(win_i)
 
         countvec = U.countvec#zeros(Int64,1)
-        #win_c = U.win_1i
-        win_c = MPI.Win_create(countvec, U.comm)
+        win_c = U.win_1i
+        #win_c = MPI.Win_create(countvec, U.comm)
         MPI.Win_fence(0, win_c)
 
         for (myrank_send, value) in send_ranks
@@ -1345,7 +1367,7 @@ function mpi_updates_U_1data!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) wher
         end
 
         MPI.Win_fence(0, win_c)
-        MPI.free(win_c)
+        #MPI.free(win_c)
 
         count = countvec[1]
 
@@ -1381,7 +1403,7 @@ end
 
 const printdata = false
 
-function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
+function mpi_updates_U_moredata_old!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
 
 
 
@@ -1389,8 +1411,8 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     otherranks = U.otherranks
 
 
-    #win_other = U.win_other
-    win_other = MPI.Win_create(otherranks, U.comm)
+    win_other = U.win_other
+    #win_other = MPI.Win_create(otherranks, U.comm)
 
     MPI.Win_fence(0, win_other)
     myrank = get_myrank(U)
@@ -1407,18 +1429,18 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     #tempmatrix = zeros(ComplexF64,NC,NC,N)
     positions = U.positions
 
-    #win = U.win
-    win = MPI.Win_create(tempmatrix, U.comm)
+    win = U.win
+    #win = MPI.Win_create(tempmatrix, U.comm)
     #println(typeof(win))
     #Isend Irecv
 
-    #win_i = U.win_i#MPI.Win_create(positions,comm)
-    win_i = MPI.Win_create(positions, U.comm)
+    win_i = U.win_i#MPI.Win_create(positions,comm)
+    #win_i = MPI.Win_create(positions, U.comm)
 
-    #win_c = U.win_1i
+    win_c = U.win_1i
 
     countvec = U.countvec#zeros(Int64,1)
-    win_c = MPI.Win_create(countvec, U.comm)
+    #win_c = MPI.Win_create(countvec, U.comm)
 
     your_ranks = U.your_ranks #zeros(Int64,nprocs,nprocs)
     your_ranks .= -1
@@ -1431,7 +1453,7 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     end
     MPI.Win_fence(0, win_other)
 
-    MPI.free(win_other)
+    #MPI.free(win_other)
 
 
     MPI.Win_fence(0, win)
@@ -1469,11 +1491,11 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
 
 
     MPI.Win_fence(0, win)
-    MPI.free(win)
+    #MPI.free(win)
     MPI.Win_fence(0, win_i)
-    MPI.free(win_i)
+    #MPI.free(win_i)
     MPI.Win_fence(0, win_c)
-    MPI.free(win_c)
+    #MPI.free(win_c)
     #GC.enable(true)
 
     your_ranks .= -1
@@ -1495,6 +1517,56 @@ function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) w
     otherranks .= 0
 
 end
+
+
+function mpi_updates_U_moredata!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
+    win = U.win 
+    basic_type = U.basic_type
+
+    GC.@preserve U send_ranks begin
+        MPI.Win_fence(0, win)
+
+        for (myrank_send, value) in send_ranks
+            count = value.count
+            count == 0 && continue
+                
+            #displacements = Vector{Cint}((value.positions[1:count] .- 1) .* (NC * NC))
+            for i in 1:count
+                # Fill the pre-allocated buffer
+                # We use NC*NC because MPI displacements are usually relative to the base type
+                U.disp_buffer[i] = Cint((value.positions[i] - 1) * (NC * NC))
+            end
+                
+            newtype_ref = Ref{MPI.MPI_Datatype}()
+            MPI.API.MPI_Type_create_indexed_block(
+                Cint(count), 
+                Cint(NC * NC), 
+                U.disp_buffer, #displacements, 
+                basic_type.val, 
+                newtype_ref
+            )
+            temp_target_dtype = newtype_ref[]
+            MPI.API.MPI_Type_commit(Ref(temp_target_dtype))
+
+            # --- PERFORM THE PUT ---
+            MPI.API.MPI_Put(
+                pointer(value.data), 
+                Cint(count * NC * NC), 
+                basic_type.val, 
+                Cint(myrank_send), 
+                Cptrdiff_t(0), 
+                Cint(1), 
+                temp_target_dtype, 
+                win.val
+            )
+
+            MPI.API.MPI_Type_free(Ref(temp_target_dtype))
+        end
+
+        MPI.Win_fence(0, win)
+    end
+end
+
 
 function mpi_updates_U!(U::Gaugefields_4D_nowing_mpi{NC}, send_ranks) where {NC}
     if length(send_ranks) != 0
@@ -1581,7 +1653,10 @@ function shifted_U_improved!(U::Gaugefields_4D_nowing_mpi{NC}, shift) where {NC}
 
     lat_size = size(U.Ushifted)
     send_ranks = U.send_ranks
-    empty!(send_ranks)
+    #empty!(send_ranks)
+    @inbounds for value in values(send_ranks)
+        value.count = 0
+    end
     # Dict{Int64,Data_sent}()
     N = prod(U.PN)
 
@@ -1904,7 +1979,7 @@ function shifted_U!(U::Gaugefields_4D_nowing_mpi{NC}, shift) where {NC}
     myrank = U.myrank
     myrank_xyzt = U.myrank_xyzt
     myrank_xyzt_send = U.myrank_xyzt
-    tempmatrix = zeros(ComplexF64, NC, NC)
+    tempmatrix = @MMatrix zeros(ComplexF64, NC, NC)
 
     win = MPI.Win_create(U.Ushifted, U[1].comm)
     #Isend Irecv
@@ -2134,7 +2209,7 @@ function shifted_U!(U::Gaugefields_4D_nowing_mpi{NC}, shift) where {NC}
 
     MPI.Win_fence(0, win)
 
-    MPI.free(win)
+    #MPI.free(win)
 
 
 
@@ -2201,7 +2276,7 @@ end
 
 function normalize_U!(U::Gaugefields_4D_nowing_mpi{NC}) where {NC}
 
-    A = zeros(ComplexF64, NC, NC)
+    A = @MMatrix zeros(ComplexF64, NC, NC)
 
     for it = 1:U.PN[4]
         for iz = 1:U.PN[3]
@@ -2285,8 +2360,8 @@ function exptU!(
     NZ = u.NZ
     NY = u.NY
     NX = u.NX
-    V0 = zeros(ComplexF64, NC, NC)
-    V1 = zeros(ComplexF64, NC, NC)
+    V0 = @MMatrix zeros(ComplexF64, NC, NC)
+    V1 = @MMatrix zeros(ComplexF64, NC, NC)
     for it = 1:u.PN[4]
         for iz = 1:u.PN[3]
             for iy = 1:u.PN[2]
@@ -4167,7 +4242,7 @@ function construct_Λmatrix_forSTOUT!(
     NY = u.PN[2]
     NX = u.PN[1]
 
-    Qn = zeros(ComplexF64, NC, NC)
+    Qn = @MMatrix zeros(ComplexF64, NC, NC)
     Un = zero(Qn)
     Mn = zero(Qn)
     Λn = zero(Qn)

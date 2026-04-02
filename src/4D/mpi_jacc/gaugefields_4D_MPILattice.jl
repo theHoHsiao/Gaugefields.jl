@@ -259,6 +259,39 @@ function substitute_U!(
     end
 end
 
+
+function substitute_U!(a::Gaugefields_4D_MPILattice, b::Shifted_Gaugefields_4D_MPILattice)
+    substitute!(a.U, b.U)
+    set_wing_U!(a)
+end
+
+
+function substitute_U!(
+    a::Array{T1,1},
+    b::Array{T2,1}
+) where {T1<:Gaugefields_4D_MPILattice,T2<:Shifted_Gaugefields_4D_MPILattice}
+    for μ = 1:4
+        substitute_U!(a[μ], b[μ])
+    end
+end
+
+
+function substitute_U!(a::Gaugefields_4D_MPILattice, b::Adjoint_Shifted_Gaugefields_4D_MPILattice)
+    substitute!(a.U, b.U)
+    set_wing_U!(a)
+end
+
+
+function substitute_U!(
+    a::Array{T1,1},
+    b::Array{T2,1}
+) where {T1<:Gaugefields_4D_MPILattice,T2<:Adjoint_Shifted_Gaugefields_4D_MPILattice}
+    for μ = 1:4
+        substitute_U!(a[μ], b[μ])
+    end
+end
+
+
 function substitute_U!(
     a::Array{T1,1},
     b::Array{T2,1}
