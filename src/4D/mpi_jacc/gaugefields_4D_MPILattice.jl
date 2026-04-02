@@ -17,7 +17,7 @@ import ..MPILattice:
     traceless_antihermitian!
 import LatticeMatrices: LatticeMatrix,
     Shifted_Lattice,
-    Adjoint_Lattice
+    Adjoint_Lattice, delinearize, shift_L, Traceless_AntiHermitian
 
 
 abstract type Fields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NDW,DI} <: Gaugefields_4D{NC} end
@@ -109,6 +109,16 @@ struct Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NDW,DI,TU<:LatticeMatrix{4,
     end
 end
 
+@inline function Base.getindex(x::Gaugefields_4D_MPILattice, i1, i2, i3, i4, i5, i6)
+    @inbounds return x.U.A[i1, i2, i3+x.NDW, i4+x.NDW, i5+x.NDW, i6+x.NDW]
+end
+
+function Base.setindex!(x::Gaugefields_4D_MPILattice, v, i1, i2, i3, i4, i5, i6)
+    @inbounds x.U.A[i1, i2, i3+x.NDW, i4+x.NDW, i5+x.NDW, i6+x.NDW] = v
+end
+
+
+
 #struct TA_Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NDW,DI} <: Fields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NDW}
 #    U::TALattice{4,T,AT,NC}
 #end
@@ -118,7 +128,8 @@ struct Shifted_Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,nw,DI,L} <: Fields_
 
     function Shifted_Gaugefields_4D_MPILattice(U::TU, shift) where {NC,NX,NY,NZ,NT,T,AT,nw,DI,TM,TU<:Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,nw,DI,TM}}
         #sU = Shifted_Lattice{typeof(U.U),shift}(U.U)
-        sU = Shifted_Lattice(U.U, shift)
+        #sU = Shifted_Lattice(U.U, shift)
+        sU = shift_L(U.U, shift)
         s = new{NC,NX,NY,NZ,NT,T,AT,nw,DI,TM}(sU)
         return s
     end
@@ -209,20 +220,26 @@ function mul_skiplastindex!(
 
 end
 
+import LatticeMatrices
+Base.@noinline function LatticeMatrices.realtrace(C::T) where {NC,T<:Gaugefields_4D_MPILattice{NC}}
+    return LatticeMatrices.realtrace(C.U)
+end
+
+
 function partial_tr(a::Gaugefields_4D_MPILattice{NC}, μ) where {NC}
     s = partial_trace(a.U, μ)
     return s
 end
 
 
-function set_wing_U!(u::Array{Gaugefields_4D_MPILattice{NC},1}) where {NC}
+@inline function set_wing_U!(u::Array{Gaugefields_4D_MPILattice{NC},1}) where {NC}
     for i = 1:length(u)
-        set_halo!(u.U)
+        set_halo!(u[i].U)
     end
     return
 end
 
-function set_wing_U!(u::Gaugefields_4D_MPILattice{NC}) where {NC}
+@inline function set_wing_U!(u::Gaugefields_4D_MPILattice{NC}) where {NC}
     set_halo!(u.U)
     return
 end
@@ -296,18 +313,23 @@ end
 function substitute_U!(A::Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT},
     B::Gaugefields_4D_nowing{NC}) where {NC,NX,NY,NZ,NT,T,AT}
 
-    dim = 4
-    PEs = A.U.dims
-    phases = A.U.phases
-    nw = A.U.nw
-    comm0 = A.U.comm
-
-    tempU = LatticeMatrix(B.U, dim, PEs;
-        nw,
-        phases,
-        comm0)
-    substitute!(A.U, tempU)
+    substitute!(A.U, B.U)
     set_halo!(A.U)
+    #=
+        dim = 4
+        PEs = A.U.dims
+        phases = A.U.phases
+        nw = A.U.nw
+        comm0 = A.U.comm
+
+        tempU = LatticeMatrix(B.U, dim, PEs;
+            nw,
+            phases,
+            comm0)
+        substitute!(A.U, tempU)
+
+        set_halo!(A.U)
+        =#
 end
 
 
@@ -398,7 +420,17 @@ function Base.adjoint(U::Shifted_Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,n
     Adjoint_Shifted_Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,nw,DI,L}(U.U')
 end
 
-function LinearAlgebra.mul!(
+import LatticeMatrices: mul_AtransB!
+@inline function mul_AtransB!(
+    c::T,
+    a::T1,
+    b::T2
+) where {T<:Gaugefields_4D_MPILattice,T1<:Fields_4D_MPILattice,T2<:Fields_4D_MPILattice}
+    mul_AtransB!(c.U, a.U, b.U)
+end
+
+
+@inline function LinearAlgebra.mul!(
     c::T,
     a::T1,
     b::T2,
@@ -409,29 +441,29 @@ function LinearAlgebra.mul!(
 
 end
 
-function LinearAlgebra.tr(a::Gaugefields_4D_MPILattice)
+@inline function LinearAlgebra.tr(a::Gaugefields_4D_MPILattice)
     tr(a.U)
     #set_halo!(a.U)
 end
 
-function LinearAlgebra.tr(a::Gaugefields_4D_MPILattice, b::Gaugefields_4D_MPILattice)
+@inline function LinearAlgebra.tr(a::Gaugefields_4D_MPILattice, b::Gaugefields_4D_MPILattice)
     tr(a.U, b.U)
 end
 
 
-function clear_U!(c::Gaugefields_4D_MPILattice)
+@inline function clear_U!(c::Gaugefields_4D_MPILattice)
     clear_matrix!(c.U)
 end
 
-function add_U!(c::Gaugefields_4D_MPILattice, t::T, a::T1) where {T1<:Fields_4D_MPILattice,T<:Number}
+@inline function add_U!(c::Gaugefields_4D_MPILattice, t::T, a::T1) where {T1<:Fields_4D_MPILattice,T<:Number}
     add_matrix!(c.U, a.U, t)
 end
 
-function add_U!(c::Gaugefields_4D_MPILattice, a::T1) where {T1<:Fields_4D_MPILattice}
+@inline function add_U!(c::Gaugefields_4D_MPILattice, a::T1) where {T1<:Fields_4D_MPILattice}
     add_matrix!(c.U, a.U)
 end
 
-function Traceless_antihermitian!(
+@inline function Traceless_antihermitian!(
     vout::Gaugefields_4D_MPILattice,
     vin::Gaugefields_4D_MPILattice,
 )
@@ -440,62 +472,15 @@ function Traceless_antihermitian!(
 
 end
 
-
-function exptU!(
-    uout::Tg,
-    t::N,
-    v::Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NumofBasis},
-    temps::Array{Tg,1},
-) where {NC,NX,NY,NZ,NT,T,AT,NumofBasis,Tg<:Gaugefields_4D_MPILattice,N<:Number} #uout = exp(t*u)
-
-    if NC > 3
-        Uta = temps[1]
-        substitute_U!(Uta, v)
-        error("not implemented for NC > 3")
-    else
-        expt!(uout.U, v.U, t)
-    end
-    set_wing_U!(uout)
+@inline function Traceless_AntiHermitian(C::Gaugefields_4D_MPILattice)
+    return Traceless_AntiHermitian(C.U)
 end
+export Traceless_AntiHermitian
 
-
-function unit_U!(U::Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NumofBasis}
-    ) where {NC,NX,NY,NZ,NT,T,AT,NumofBasis}
-    makeidentity_matrix!(U.U)
-    set_wing_U!(U)
-end
-
-
-function calculate_Polyakov_loop(
-    U::Array{T,1},
-    temp1::Gaugefields_4D_MPILattice{NC},
-    temp2::Gaugefields_4D_MPILattice{NC},
-) where {NC,NX,NY,NZ,NT,T<:Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT}}
-    Dim = 4
-    Uold = temp1
-    Unew = temp2
-    shift = zeros(Int64, Dim)
-
-    μ = Dim
-    NN = U[1].U.PN # local NC,NC,NX,NY,NZ,NT 
-
-    substitute_U!(Uold, U[μ])
-    for i = 2:NT
-        shift[μ] = i - 1
-        U1 = shift_U(U[μ], Tuple(shift))
-        mul_skiplastindex!(Unew, Uold, U1)
-        Uold, Unew = Unew, Uold
-    end
-
-    set_wing_U!(Uold)
-    poly = partial_tr(Uold, μ) / prod(NN[1:Dim-1])
-    poly /= prod(U[1].U.dims)  # normalize by number of processors
-    return poly
-
-end
-
-
-function barrier(x::T) where {T<:Gaugefields_4D_MPILattice}
-    #println("ba")
-    MPI.Barrier(x.U.comm)
+@inline function exptU!(C::TC, A::Traceless_AntiHermitian{L}, t=1) where {
+    L,TC<:Gaugefields_4D_MPILattice}
+    # Always use TA-specialized path (forward + Enzyme custom reverse).
+    LatticeMatrices.expt_TA!(C.U, A.data, t)
+    return
+    #set_halo!(C)
 end

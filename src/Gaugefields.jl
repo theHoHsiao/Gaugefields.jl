@@ -25,6 +25,10 @@ include("./heatbath/heatbathmodule.jl")
 include("./smearing/gradientflow.jl")
 
 
+function Wiltinger_U! end
+import LatticeMatrices: diff, nodiff, toann, Wiltinger_derivative!,
+    Wiltinger!, Wiltinger_numerical_derivative, Enzyme_derivative!
+export Wiltinger_derivative!, Wiltinger_numerical_derivative, Enzyme_derivative!
 
 #function __init__()
 #    @require MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195" begin
@@ -84,7 +88,13 @@ import .AbstractGaugefields_module:
     cloverloops_4D,
     make_Cloverloopterms,
     make_Cloverloopterms!,
-    lambda_k_mul!
+    lambda_k_mul!,
+    Traceless_AntiHermitian
+
+import LatticeMatrices: realtrace, nodiff, diff, Wiltinger_derivative!,
+    Wiltinger_numerical_derivative, mul_AtransB!, Numerical_derivative_Enzyme
+export nodiff, diff, realtrace, Wiltinger_derivative!,
+    Wiltinger_numerical_derivative, mul_AtransB!, Numerical_derivative_Enzyme
 
 #=
                                     import .AbstractGaugefields_module:AbstractGaugefields,identitymatrix,Abstractfields,
@@ -162,7 +172,8 @@ import .Abstractsmearing_module:
     CASK_layer,
     zero_grad!
 import .SUN_generator: Generator
-import .Gradientflow_module: Gradientflow, Gradientflow_general, flow!, get_tempG, get_eps
+import .Gradientflow_module: Gradientflow, Gradientflow_general, flow!, get_tempG, get_eps,
+    Gradientflow_general_Bfields
 #import .Verbose_print:Verbose_level,Verbose_3,Verbose_2,Verbose_1,println_verbose3,println_verbose2,println_verbose1,
 #    print_verbose1,print_verbose2,print_verbose3
 
@@ -224,6 +235,7 @@ import .GaugeAction_module:
 
 import .Temporalfields_module: Temporalfields, unused!
 export Temporalfields, unused!
+export clear_U!, add_U!
 
 export IdentityGauges,
     RandomGauges, Oneinstanton, calculate_Plaquette, calculate_Polyakov_loop
@@ -255,7 +267,8 @@ export set_parameters!, get_parameter_derivatives, apply_smearing_U,
     zero_grad!,
     get_parameters
 export construct_Adjoint_rep_Gaugefields
-export get_myrank, getvalue, get_nprocs, Gradientflow_general
+export get_myrank, getvalue, get_nprocs, Gradientflow_general,
+    Gradientflow_general_Bfields
 export Heatbath_update
 export println_verbose_level1, println_verbose_level2, println_verbose_level3
 export overrelaxation!
@@ -279,5 +292,7 @@ export Initialize_Bfields
 
 
 export CASK_layer, zero_grad!
+
+export Traceless_AntiHermitian
 
 end

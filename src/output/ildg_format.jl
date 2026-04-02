@@ -974,7 +974,7 @@ function load_binarydata!(U, filename)
     load_gaugefield!(U, i, ildg, L, NC, NDW=NDW)
 end
 
-function load_gaugefield!(U, i, ildg::ILDG, L, NC; NDW=0)
+function load_gaugefield!(U, i, ildg::ILDG, L, NC; NDW=0, tmpfilename="tempconf.dat")
     NX = L[1]
     NY = L[2]
     NZ = L[3]
@@ -998,10 +998,8 @@ function load_gaugefield!(U, i, ildg::ILDG, L, NC; NDW=0)
 
     temp_name = "$(filename).dat"
 
-    if !isfile(temp_name)
-        lime_extract_record() do exe
-            run(`$exe $filename $message_no $reccord_no $temp_name`)
-        end
+    lime_extract_record() do exe
+        run(`$exe $filename $message_no $reccord_no $tmpfilename`)
     end
     #lime_extract_record() do exe
     #    run(`$exe $filename $message_no $reccord_no $temp_name`)

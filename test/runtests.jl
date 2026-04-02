@@ -13,6 +13,16 @@ const eps = 1e-1
 end
 =#
 
+@testset "Bfield HMC" begin
+    println("Bfield HMC")
+    include("Btest/sample_dynB.jl")
+end
+
+@testset "Bfield Gradient flow" begin
+    println("Bfield Gradient flow")
+    include("Btest/gradientflow_general_B.jl")
+end
+
 @testset "Initialization" begin
     println("Initialization")
     include("init.jl")
