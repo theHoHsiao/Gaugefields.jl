@@ -1,6 +1,6 @@
 #import CUDA
-import JACC
-JACC.@init_backend
+#import JACC
+#JACC.@init_backend
 
 
 function cudakernel_identityGaugefields!(U, NC)
