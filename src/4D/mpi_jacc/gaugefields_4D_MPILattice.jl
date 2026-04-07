@@ -502,3 +502,10 @@ function exptU!(
     end
     set_wing_U!(uout)
 end
+
+
+function unit_U!(U::Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NumofBasis}
+    ) where {NC,NX,NY,NZ,NT,T,AT,NumofBasis}
+    makeidentity_matrix!(U.U)
+    set_wing_U!(U)
+end
