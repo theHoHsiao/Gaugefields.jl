@@ -316,6 +316,19 @@ function randomGaugefields_4D_nowing_mpi(
         verbose_level=verbose_level,
         comm=comm,
     )
+    if randomnumber == "Random"
+        rng = MersenneTwister()
+        #randomfunc() = rand()
+    elseif randomnumber == "Reproducible"
+        rng = StableRNG(123)
+        #randomfunc() = rand(rng,Float64)
+    elseif randomnumber isa Integer
+        rng = StableRNG(randomnumber)
+    else
+        error(
+            "randomnumber should be \"Random\", \"Reproducible\", or an Integer seed. Now randomnumber = $randomnumber",
+        )
+    end
     v = 1
 
     for it = 1:U.PN[4]
@@ -324,7 +337,7 @@ function randomGaugefields_4D_nowing_mpi(
                 for ix = 1:U.PN[1]
                     for jc = 1:NC
                         @simd for ic = 1:NC
-                            v = rand() - 0.5 + im * (rand() - 0.5)
+                            v = rand(rng) - 0.5 + im * (rand(rng) - 0.5)
                             setvalue!(U, v, ic, jc, ix, iy, iz, it)
                         end
                     end
@@ -703,7 +716,31 @@ end
 
 
 function map_U_sequential!(U::Gaugefields_4D_nowing_mpi{NC}, f!::Function, Uin) where {NC}
-    error("The function map_U_sequential! can not be used with MPI")
+    #A = zeros(ComplexF64,NC,NC)
+    B = zeros(ComplexF64, NC, NC)
+    for it = 1:U.PN[4]
+        for iz = 1:U.PN[3]
+            for iy = 1:U.PN[2]
+                for ix = 1:U.PN[1]
+
+                    for k2 = 1:NC
+                        for k1 = 1:NC
+                            B[k1, k2] = getvalue(U, k1, k2, ix, iy, iz, it) # U[k1, k2, ix, iy, iz, it]
+                        end
+                    end
+                    f!(B, Uin, ix, iy, iz, it)
+
+                    for k2 = 1:NC
+                        for k1 = 1:NC
+                            setvalue!(U, B[k1, k2], k1, k2, ix, iy, iz, it)
+                        end
+                    end
+
+                end
+            end
+        end
+    end
+    set_wing_U!(U)
 end
 
 

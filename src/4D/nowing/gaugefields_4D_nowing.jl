@@ -253,9 +253,11 @@ function randomGaugefields_4D_nowing(
     elseif randomnumber == "Reproducible"
         rng = StableRNG(123)
         #randomfunc() = rand(rng,Float64)
+    elseif randomnumber isa Integer
+        rng = StableRNG(randomnumber)
     else
         error(
-            "randomnumber should be \"Random\" or \"Reproducible\". Now randomnumber = $randomnumber",
+            "randomnumber should be \"Random\", \"Reproducible\", or an Integer seed. Now randomnumber = $randomnumber",
         )
     end
 
