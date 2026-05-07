@@ -372,7 +372,10 @@ function Initialize_Gaugefields(
     isMPILattice=false,
     boundarycondition=ones(4)
 )
-
+    if randomnumber isa Int
+        Random.seed!(randomnumber)
+        randomnumber = rand(1:10000000)
+    end
 
     Dim = length(NN)
     if condition == "cold"
@@ -416,6 +419,9 @@ function Initialize_Gaugefields(
     U[1] = u1
 
     for μ = 2:Dim
+        if randomnumber isa Int
+            randomnumber = rand(1:10000000)
+        end
         if condition == "cold"
             U[μ] = IdentityGauges(
                 NC,
