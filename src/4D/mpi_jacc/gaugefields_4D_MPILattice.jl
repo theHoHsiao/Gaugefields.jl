@@ -69,9 +69,9 @@ struct Gaugefields_4D_MPILattice{NC,NX,NY,NZ,NT,T,AT,NDW,DI,TU<:LatticeMatrix{4,
         end
 
         @assert NX > PEs_in[1] "PEs[1] is larger than NX. Now NX = $NX and PEs = $PEs_in"
-        @assert NY > PEs_in[2] "PEs[2] is larger than NY. Now NX = $NY and PEs = $PEs_in"
-        @assert NZ > PEs_in[3] "PEs[3] is larger than NZ. Now NX = $NZ and PEs = $PEs_in"
-        @assert NT > PEs_in[4] "PEs[4] is larger than NT. Now NX = $NT and PEs = $PEs_in"
+        @assert NY > PEs_in[2] "PEs[2] is larger than NY. Now NY = $NY and PEs = $PEs_in"
+        @assert NZ > PEs_in[3] "PEs[3] is larger than NZ. Now NZ = $NZ and PEs = $PEs_in"
+        @assert NT > PEs_in[4] "PEs[4] is larger than NT. Now NT = $NT and PEs = $PEs_in"
 
         @assert NX % PEs_in[1] == 0 "NX % PEs[1] should be 0. Now NX = $NX and PEs = $PEs_in"
         @assert NY % PEs_in[2] == 0 "NY % PEs[2] should be 0. Now NY = $NY and PEs = $PEs_in"
