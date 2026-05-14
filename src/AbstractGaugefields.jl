@@ -366,6 +366,7 @@ function Initialize_Gaugefields(
     verbose_level=2,
     randomnumber="Random",
     cuda=false,
+    unifiedmemory=false,
     blocks=nothing,
     accelerator="none",
     singleprecision=false,
@@ -388,6 +389,7 @@ function Initialize_Gaugefields(
             mpiinit,
             verbose_level,
             cuda,
+            unifiedmemory,
             blocks,
             accelerator,
             singleprecision,
@@ -405,6 +407,7 @@ function Initialize_Gaugefields(
             verbose_level,
             randomnumber,
             cuda,
+            unifiedmemory,
             blocks,
             accelerator,
             singleprecision,
@@ -432,6 +435,7 @@ function Initialize_Gaugefields(
                 mpiinit=true,
                 verbose_level,
                 cuda,
+                unifiedmemory,
                 blocks,
                 accelerator,
                 singleprecision,
@@ -449,6 +453,7 @@ function Initialize_Gaugefields(
                 verbose_level,
                 randomnumber,
                 cuda,
+                unifiedmemory,
                 blocks,
                 accelerator,
                 singleprecision,
@@ -472,6 +477,7 @@ function RandomGauges(
     verbose_level=2,
     randomnumber="Random",
     cuda=false,
+    unifiedmemory=false,
     blocks=nothing,
     accelerator="none",
     singleprecision=false,
@@ -566,6 +572,7 @@ function RandomGauges(
                             verbose_level=verbose_level,
                             randomnumber=randomnumber,
                             accelerator=accelerator_g,
+                            unifiedmemory=unifiedmemory,
                             singleprecision=singleprecision
                         )
                     else
@@ -642,6 +649,7 @@ function IdentityGauges(
     mpiinit=nothing,
     verbose_level=2,
     cuda=false,
+    unifiedmemory=false,
     blocks=nothing,
     accelerator="none",
     singleprecision=false,
@@ -749,6 +757,7 @@ function IdentityGauges(
                             blocks,
                             verbose_level=verbose_level,
                             accelerator=accelerator_g,
+                            unifiedmemory=unifiedmemory,
                             singleprecision=singleprecision
                         )
                     else

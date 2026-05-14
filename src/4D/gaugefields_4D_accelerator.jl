@@ -22,6 +22,7 @@ struct Gaugefields_4D_accelerator{NC,TU,TUv,accdevise,TshifedU} <: Gaugefields_4
     blockinfo::Blockindices
     temp_volume::TUv
     accelerator::String
+    unifiedmemory::Bool
     Ushifted::TshifedU #CUDA.CuArray{ComplexF64,4}
     singleprecision::Bool
     #blocks::NTuple{4,Int64}
@@ -41,6 +42,7 @@ struct Gaugefields_4D_accelerator{NC,TU,TUv,accdevise,TshifedU} <: Gaugefields_4
         blocks_in;
         verbose_level=2,
         accelerator="none",
+        unifiedmemory=false,
         singleprecision=false
     ) where {T<:Integer}
 
@@ -101,11 +103,13 @@ struct Gaugefields_4D_accelerator{NC,TU,TUv,accdevise,TshifedU} <: Gaugefields_4
             #error(iscudadefined)
             if iscudadefined
                 if CUDA.has_cuda()
-                    #U = CUDA.CuArray(Ucpu)
-                    #temp_volume = CUDA.CuArray(temp_volume_cpu)
-                    U = CUDA.CuArray{dtype, 4, CUDA.UnifiedMemory}(Ucpu)
-                    temp_volume = CUDA.CuArray{dtype, 2, CUDA.Mem.UnifiedBuffer}(temp_volume_cpu)
-                    
+                    if unifiedmemory
+                        U = CUDA.CuArray{dtype, 4, CUDA.UnifiedMemory}(Ucpu)
+                        temp_volume = CUDA.CuArray{dtype, 2, CUDA.Mem.UnifiedBuffer}(temp_volume_cpu)
+                    else
+                        U = CUDA.CuArray(Ucpu)
+                        temp_volume = CUDA.CuArray(temp_volume_cpu)
+                    end
                     accdevise = :cuda
                 else
                     @warn "accelerator=\"cuda\" is set but there is no CUDA devise. CPU will be used"
@@ -172,7 +176,7 @@ struct Gaugefields_4D_accelerator{NC,TU,TUv,accdevise,TshifedU} <: Gaugefields_4
 
         return new{NC,TU,TUv,accdevise,TshifedU}(U, NX, NY, NZ, NT, NDW, NV, NC, mpi, verbose_print,
             #Ushifted,
-            blockinfo, temp_volume, accelerator,
+            blockinfo, temp_volume, accelerator, unifiedmemory,
             Ushifted, singleprecision)
     end
 end
@@ -193,6 +197,7 @@ function Base.similar(U::T) where {T<:Gaugefields_4D_accelerator}
         U.blockinfo.blocks,
         verbose_level=U.verbose_print.level,
         accelerator=U.accelerator,
+        unifiedmemory=U.unifiedmemory,
         singleprecision=U.singleprecision
     )
     #identityGaugefields_4D_nowing(U.NC,U.NX,U.NY,U.NZ,U.NT,U.NDW)
@@ -209,8 +214,8 @@ end
 
 
 
-function identityGaugefields_4D_accelerator(NC, NX, NY, NZ, NT, blocks; verbose_level=2, accelerator="none", singleprecision=false)
-    U = Gaugefields_4D_accelerator(NC, NX, NY, NZ, NT, blocks; verbose_level, accelerator, singleprecision)
+function identityGaugefields_4D_accelerator(NC, NX, NY, NZ, NT, blocks; verbose_level=2, accelerator="none", unifiedmemory=false, singleprecision=false)
+    U = Gaugefields_4D_accelerator(NC, NX, NY, NZ, NT, blocks; verbose_level, accelerator, unifiedmemory, singleprecision)
 
     set_identity!(U)
     return U
@@ -256,9 +261,10 @@ function randomGaugefields_4D_accelerator(
     verbose_level=2,
     randomnumber="Random",
     accelerator="none",
+    unifiedmemory=false,
     singleprecision=false
 )
-    U = Gaugefields_4D_accelerator(NC, NX, NY, NZ, NT, blocks; verbose_level, accelerator, singleprecision)
+    U = Gaugefields_4D_accelerator(NC, NX, NY, NZ, NT, blocks; verbose_level, accelerator, unifiedmemory, singleprecision)
 
     if randomnumber == "Random"
     else
