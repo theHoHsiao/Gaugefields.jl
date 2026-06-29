@@ -1065,7 +1065,74 @@ function evaluate_gaugelinks_evenodd!(
 
 end
 
+
 function evaluate_gaugelinks!(
+    uout::T,
+    w::Wilsonline{Dim},
+    U::Vector{T},
+    temps::Vector{T},   # length >= 2
+) where {T<:AbstractGaugefields,Dim}
+
+    #origin = ntuple(_ -> 0, Dim)
+
+    glinks = w
+    numlinks = length(glinks)
+
+    # If there are no links, return the identity element
+    if numlinks == 0
+        unit_U!(uout)
+        return
+    end
+
+    # Ping-pong buffers for the accumulated product
+    Acc = temps[1]
+    Tmp = temps[2]
+
+    # ------------------------------------------------------------
+    # First link
+    # ------------------------------------------------------------
+    link1 = glinks[1]
+    isU1dag = isdag(link1)
+
+    # Get the initial field
+    # IMPORTANT:
+    # Avoid substitute_U! here (it may trigger halo communication).
+    # Directly take the shifted view/buffer from U[dir1].
+    U_initial = shift_U(U[get_direction(link1)], get_position(link1))
+    
+    # Special case: only one link
+    if isU1dag
+        substitute_U!(Acc, U_initial') # Acc now holds U1†
+    else
+        substitute_U!(Acc, U_initial)  # Acc now holds U1
+    end
+    
+    # Acc as starting point
+    Uaccumulated = Acc 
+
+    # ------------------------------------------------------------
+    # Multiply remaining links
+    # ------------------------------------------------------------
+    for k = 2:numlinks
+        linkk = glinks[k]
+        Ushift_k = shift_U(U[get_direction(linkk)], get_position(linkk))
+        
+        # Note: We now pass 'false' for isU1dag because the 
+        # accumulation buffer is already processed!
+        multiply_12!(Tmp, Uaccumulated, Ushift_k, k, isdag(linkk), false)
+
+        # Ping-pong
+        Acc, Tmp = Tmp, Acc
+        Uaccumulated = Acc
+    end
+
+    substitute_U!(uout, Acc)
+
+    return
+end
+
+
+function evaluate_gaugelinks_old!(
     uout::T,
     w::Wilsonline{Dim},
     U::Array{T,1},
