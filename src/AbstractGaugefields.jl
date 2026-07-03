@@ -663,7 +663,6 @@ function IdentityGauges(
 )
     accelerator_g = accelerator
     dim = length(NN)
-    println("singleprecision = $singleprecision")
     @assert mpi * cuda == 0 "CUDA with mpi is not supported!"
 
     if isMPILattice
