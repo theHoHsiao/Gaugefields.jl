@@ -50,6 +50,8 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
     comm::MPI.Comm
     basic_type:: MPI.Datatype
     disp_buffer::Vector{Cint}
+    singleprecision::Bool
+    
 
     function Gaugefields_4D_nowing_mpi(
         NC::T,
@@ -61,6 +63,8 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
         mpiinit=true,
         verbose_level=2,
         comm=MPI.COMM_WORLD,
+        singleprecision=false,
+        
     ) where {T<:Integer}
         NV = NX * NY * NZ * NT
         NDW = 0
@@ -86,10 +90,12 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
 
         myrank_xyzt = get_myrank_xyzt(myrank, PEs)
 
-        #println("Hello world, I am $(MPI.Comm_rank(comm)) of $(MPI.Comm_size(comm))")
+        dtype = ifelse(singleprecision, ComplexF32, ComplexF64)
+
+        #println("Hello world, I am $(MPI.Comm_rank(comm)) of $(MPI.Comm_size(comm)) with $dtype $singleprecision")
 
         U = zeros(
-            ComplexF64,
+            dtype,
             NC,
             NC,
             PN[1] + 2NDW,
@@ -103,14 +109,14 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
         #    U[μ] = zeros(ComplexF64,NC,NC,NX+2NDW,NY+2NDW,NZ+2NDW,NT+2NDW)
         #end
         #tempmatrix = zeros(ComplexF64, NC, NC, prod(PN))
-        tempmatrix = zeros(ComplexF64, NC, NC, 1)
+        tempmatrix = zeros(dtype, NC, NC, 1)
         #positions = zeros(Int64, prod(PN))
         #positions = zeros(Int64, 1)
         send_ranks = Dict{Int64,Data_sent{NC}}()
         mpi = true
         #win = MPI.Win_create(tempmatrix, comm)
         win = MPI.Win_create(Ushifted, comm)
-        basic_type = MPI.Datatype(ComplexF64)
+        basic_type = MPI.Datatype(dtype)
         disp_buffer = zeros(Cint, prod(PN))
         #win_i = MPI.Win_create(positions, comm)
         #countvec = zeros(Int64, 1)
@@ -154,6 +160,7 @@ struct Gaugefields_4D_nowing_mpi{NC} <: Gaugefields_4D{NC}
             comm,
             basic_type,
             disp_buffer,
+            singleprecision
         )
     end
 end
@@ -258,6 +265,7 @@ function identityGaugefields_4D_nowing_mpi(
     NZ,
     NT,
     PEs;
+    singleprecision=false,
     mpiinit=true,
     verbose_level=2,
     randomnumber="Random",
@@ -273,6 +281,7 @@ function identityGaugefields_4D_nowing_mpi(
         mpiinit=mpiinit,
         verbose_level=verbose_level,
         comm=comm,
+        singleprecision=singleprecision
     )
     v = 1
 
@@ -2352,6 +2361,7 @@ function Base.similar(U::T) where {T<:Gaugefields_4D_nowing_mpi}
         mpiinit=U.mpiinit,
         verbose_level=U.verbose_print.level,
         comm=U.comm,
+        singleprecision=U.singleprecision
     )
     #identityGaugefields_4D_nowing(U.NC,U.NX,U.NY,U.NZ,U.NT,U.NDW)
     return Uout
@@ -3104,7 +3114,7 @@ function LinearAlgebra.tr(
         end
     end
 
-    s = MPI.Allreduce(s, MPI.SUM, comm)
+    s = MPI.Allreduce(s, MPI.SUM, a.comm)
 
     #println(3*NT*NZ*NY*NX*NC)
     return s
@@ -3134,7 +3144,7 @@ function LinearAlgebra.tr(a::Gaugefields_4D_nowing_mpi{NC}) where {NC}
         end
     end
 
-    s = MPI.Allreduce(s, MPI.SUM, comm)
+    s = MPI.Allreduce(s, MPI.SUM, a.comm)
 
     #println(3*NT*NZ*NY*NX*NC)
     return s

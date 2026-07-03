@@ -371,7 +371,8 @@ function Initialize_Gaugefields(
     accelerator="none",
     singleprecision=false,
     isMPILattice=false,
-    boundarycondition=ones(4)
+    boundarycondition=ones(4),
+    comm=MPI.COMM_WORLD
 )
     if randomnumber isa Int
         Random.seed!(randomnumber)
@@ -394,7 +395,9 @@ function Initialize_Gaugefields(
             accelerator,
             singleprecision,
             isMPILattice,
-            boundarycondition
+            boundarycondition,
+            comm=comm
+
         )
     elseif condition == "hot"
         u1 = RandomGauges(
@@ -440,7 +443,8 @@ function Initialize_Gaugefields(
                 accelerator,
                 singleprecision,
                 isMPILattice,
-                boundarycondition
+                boundarycondition,
+                comm=comm
             )
         elseif condition == "hot"
             U[μ] = RandomGauges(
@@ -654,11 +658,12 @@ function IdentityGauges(
     accelerator="none",
     singleprecision=false,
     isMPILattice=false,
-    boundarycondition=ones(4)
+    boundarycondition=ones(4),
+    comm=MPI.COMM_WORLD
 )
     accelerator_g = accelerator
     dim = length(NN)
-
+    println("singleprecision = $singleprecision")
     @assert mpi * cuda == 0 "CUDA with mpi is not supported!"
 
     if isMPILattice
@@ -674,6 +679,7 @@ function IdentityGauges(
                 singleprecision,
                 boundarycondition,
                 PEs,
+                comm=comm,
                 #mpiinit
             )
         elseif dim == 2
@@ -686,6 +692,7 @@ function IdentityGauges(
                 singleprecision,
                 boundarycondition=boundarycondition[1:2],
                 PEs,
+                comm=comm,
                 #mpiinit
             )
         else
@@ -709,8 +716,10 @@ function IdentityGauges(
                             NN[3],
                             NN[4],
                             PEs,
+                            singleprecision=singleprecision,
                             mpiinit=mpiinit,
                             verbose_level=verbose_level,
+                            comm=comm,
                         )
                     else
                         U = identityGaugefields_4D_wing_mpi(
@@ -723,6 +732,7 @@ function IdentityGauges(
                             PEs,
                             mpiinit=mpiinit,
                             verbose_level=verbose_level,
+                            comm=comm
                         )
                     end
                 elseif dim == 2
@@ -734,6 +744,7 @@ function IdentityGauges(
                             PEs,
                             mpiinit=mpiinit,
                             verbose_level=verbose_level,
+                            comm=comm
                         )
                     end
                 else
